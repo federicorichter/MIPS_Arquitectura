@@ -6,7 +6,8 @@ module instruction_fetch #(
     input wire rst,
     input wire [SIZE-1:0]i_instruction_jump, //bit control jump
     input wire i_mux_selec, // selector del mux
-    output wire [SIZE-1:0]o_instruction // salida:instruccion
+    output wire [SIZE-1:0]o_instruction, // salida:instruccion
+    output wire [SIZE-1:0] o_pc
 );
 
     wire [SIZE-1:0]adder_output;
@@ -51,5 +52,6 @@ module instruction_fetch #(
 */
 
     assign input_mux = {i_instruction_jump, adder_output};
+    assign o_pc = pc;
 
 endmodule

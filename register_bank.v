@@ -1,7 +1,7 @@
 module register_bank #(
     parameter SIZE = 32,
     parameter NUM_REGISTERS = 32,
-    parameter SIZE_REG_DIR = $clog(NUM_REGISTERS)
+    parameter SIZE_REG_DIR = $clog2(NUM_REGISTERS)
 )(
     input wire clk,
     input wire rst,
@@ -25,7 +25,7 @@ module register_bank #(
 
     always@(posedge clk)begin
         if(rst)begin
-            for (i = 0 ; i < NUM_REGS ; i = i + 1)begin
+            for (i = 0 ; i < NUM_REGISTERS ; i = i + 1)begin
                 registers[i] <= 0;
             end
         end

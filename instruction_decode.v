@@ -1,10 +1,11 @@
 module instruction_decode #(
     parameter SIZE = 32,
     parameter NUM_REGISTERS = 32,
-    parameter SIZE_REG_DIR = $clog(NUM_REGISTERS),
+    parameter SIZE_REG_DIR = $clog2(NUM_REGISTERS),
     parameter SIZE_OP = 6
 )
 (
+    input wire i_stall,
     input wire [SIZE-1:0]i_instruction,
     
     input wire [SIZE_REG_DIR-1:0] i_w_dir,
@@ -57,12 +58,12 @@ module instruction_decode #(
         .o_reg_B(o_reg_B)
     );
 
-    sign_extender sign_extender(
+    sing_extender sign_extender(
         i_instruction[15:0],
-        reg_jump
+        o_immediate
     );
 
-    assign o_immediate = reg_jump;
+    //assign o_immediate = reg_jump;
     assign o_op = i_instruction[31:26];
     assign o_dir_rd = i_instruction[15:11];
     assign o_dir_rs =   i_instruction[25:21]; 

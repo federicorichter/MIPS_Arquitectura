@@ -9,7 +9,8 @@ module instruction_fetch #(
     input wire [SIZE-1:0]i_instruction_jump, //bit control jump
     input wire i_mux_selec, // selector del mux
     output wire [SIZE-1:0]o_instruction, // salida:instruccion
-    output wire [SIZE-1:0] o_pc
+    output wire [SIZE-1:0] o_pc,
+    output wire [SIZE-1:0] o_adder
 );
     localparam ADDRESS_SIZE = $clog2(MAX_INSTRUCTION) ;
 
@@ -24,6 +25,7 @@ module instruction_fetch #(
         instruction_mem[0] = 32'b00111100000000000000000000000001;
         instruction_mem[1] = 32'b00111100000000010000000000000001;
         instruction_mem[2] = 32'b00000000000000010001000000100001;
+        
         //instruction_mem[3] = 32'h00C00000;
     end
 
@@ -73,5 +75,6 @@ module instruction_fetch #(
     assign input_mux = {i_instruction_jump, adder_output};
     assign o_pc = pc;
     assign o_instruction = instruction_mem[pc];
+    assign o_adder = adder_output;
 
 endmodule

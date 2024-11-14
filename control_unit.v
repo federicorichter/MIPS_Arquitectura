@@ -33,7 +33,7 @@ module general_control #(
     always @(*) begin
         casez ({i_opcode, i_func})
             // R-type instructions
-            12'b000000000000: control_reg = 18'b; // SLL (shift left logical)
+            12'b: control_reg = 18'b; // SLL (shift left logical)
             // REG_WRITE = 1 (write to register)
             // BRANCH = 0 (not a branch instruction)
             // UNSIGNED = 0 (signed operation)
@@ -648,8 +648,23 @@ module general_control #(
             // JUMP_OR_B = 1 (jump instruction)
 
             12'b000011??????: control_reg = 18'b100000000000000100; // JAL
-            // Similar justificación que J, pero REG_WRITE = 1 (escribir en el registro)
-            
+            // REG_WRITE = 1 (not writing to register)
+            // BRANCH = 0 (not a branch instruction)
+            // UNSIGNED = 0 (signed operation)
+            // MEM_READ = 0 (not a memory read)
+            // MEM_WRITE = 0 (not a memory write)
+            // MASK_1 = 0 (not masking)
+            // MASK_2 = 0 (not masking)
+            // REG_DST = 0 (not writing to register)
+            // SHIFT_SRC = 0 (ALU source is rs)
+            // ALU_SRC = 0 (ALU source is rt)
+            // ALU_OP = 000 (ALU operation is add)
+            // MEM_2_REG = 0 (not writing memory to register)
+            // J_RET_DST = 0 (not a jump/return instruction)
+            // EQorNE = 0 (not a branch on equal/not equal)
+            // JUMP_SRC = 1 (jump instruction)
+            // JUMP_OR_B = 1 (jump instruction)
+
             12'b000000??????00000: control_reg = 18'b100000000000000110; // JALR
             // REG_WRITE = 1 (write to register)
             // BRANCH = 0 (not a branch instruction)

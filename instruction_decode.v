@@ -6,6 +6,8 @@ module instruction_decode #(
 )
 (
     input wire i_stall,
+    input wire rst,
+    input wire clk,
     input wire [SIZE-1:0]i_instruction,
     
     input wire [SIZE_REG_DIR-1:0] i_w_dir,
@@ -18,9 +20,9 @@ module instruction_decode #(
 
     output wire [SIZE-1:0] o_immediate,
 
-    output wire [SIZE-1:0] o_dir_rs,
-    output wire [SIZE-1:0] o_dir_rt,
-    output wire [SIZE-1:0] o_dir_rd
+    output wire [SIZE_REG_DIR-1:0] o_dir_rs,
+    output wire [SIZE_REG_DIR-1:0] o_dir_rt,
+    output wire [SIZE_REG_DIR-1:0] o_dir_rd
 );
     reg[SIZE-1:0] reg_jump;
 

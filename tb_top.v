@@ -10,9 +10,9 @@ module tb_top;
     initial begin
         rst = 1;
         i_stall = 0;
-        #100;
+        #50;
         rst = 0;
-        #500;
+        #1200;
         $finish;
     end
 

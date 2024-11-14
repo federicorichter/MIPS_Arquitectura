@@ -38,7 +38,12 @@ module mips #(
     wire [SIZE-1:0] immediate;
     wire [4:0] rs_dir, rd_dir, rt_dir;
     wire [CONTROL_SIZE-1:0] control_signals;
-    wire [67:0] if_to_id;
+    wire [63:0] if_to_id;
+    wire [120:0] id_to_ex;
+    wire [4:0]reg_address;
+    wire [SIZE-1:0] reg_alu_res;
+    wire [SIZE-1:0] reg_mem_data;
+
     
     instruction_fetch #(
         .SIZE(32),
@@ -76,14 +81,6 @@ module mips #(
         .o_control(control_signals)
     );
 
-    /*latch #(
-        .BUS_DATA(120)
-    ) ID_EX (
-        .clk(clk),
-        .rst(rst),
-        .i
-    );*/
-
     instruction_decode #(
         .SIZE(32),
         .NUM_REGISTERS(32),
@@ -92,6 +89,8 @@ module mips #(
     ) ID (
         .i_stall(i_stall),
         .i_instruction(if_to_id[63:32]),
+        .rst(rst),
+        .clk(clk),
         //.i_w_dir(),
         //.i_w_data,
         .o_reg_A(reg_a),
@@ -102,5 +101,52 @@ module mips #(
         .o_dir_rt(rt_dir),
         .o_dir_rd(rd_dir)
     );
+
+    latch #(
+        .BUS_DATA(124)
+    ) ID_EX (
+        .clk(clk),
+        .rst(rst),
+        .i_data({
+            //if_to_id[63:32],
+            reg_a,
+            reg_b,
+            immediate,
+            rt_dir,
+            rd_dir,
+            control_signals[REG_WRITE], control_signals[BRANCH],
+            control_signals[UNSIGNED], control_signals[MEM_READ],
+            control_signals[MEM_WRITE], control_signals[MASK_1],
+            control_signals[MASK_2], control_signals[REG_DST],
+            control_signals[SHIFT_SRC], control_signals[ALU_SRC],
+            control_signals[ALU_OP2], control_signals[ALU_OP1],
+            control_signals[ALU_OP0], control_signals[MEM_2_REG],
+            control_signals[J_RET_DST], control_signals[EQorNE],
+            control_signals[JUMP_SRC], control_signals[JUMP_OR_B]
+        }),
+        .o_data(id_to_ex)
+    );
+
+    execution #(
+        .SIZE(SIZE),
+        .OP_SIZE(6),
+        .ALU_OP_SIZE(3)
+    ) EX (
+        .clk(clk),
+        .i_shift_mux_a(id_to_ex[9]),
+        .i_src_alu_b(id_to_ex[8]),
+        .i_reg_dst(id_to_ex[10]),
+        .i_alu_op(id_to_ex[7:5]),
+        .i_data_a(id_to_ex[123:92]),
+        .i_data_b(id_to_ex[91:60]),
+        .i_sign_ext(id_to_ex[59:28]),
+        .i_rt_add(id_to_ex[27:23]),
+        .i_rd_add(id_to_ex[22:18]),
+        .o_reg_add(reg_address),
+        .o_alu_res(reg_alu_res),
+        .o_mem_data(reg_mem_data)
+
+    );
+
 
 endmodule

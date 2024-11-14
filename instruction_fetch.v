@@ -22,8 +22,8 @@ module instruction_fetch #(
     reg [SIZE-1:0] instruction_mem [ADDRESS_SIZE-1:0];  // Declarar como "reg"
 
     initial begin
-        instruction_mem[0] = 32'b00111100000000000000000000000001;
-        instruction_mem[1] = 32'b00111100000000010000000000000001;
+        instruction_mem[0] = 32'b00111100000000010000000000000001;
+        instruction_mem[1] = 32'b00111100000000100000000000000001;
         instruction_mem[2] = 32'b00000000000000010001000000100001;
         
         //instruction_mem[3] = 32'h00C00000;

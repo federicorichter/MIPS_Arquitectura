@@ -15,11 +15,11 @@ module mips #(
     localparam UNSIGNED = 2; //Unsigned
     localparam MEM_READ = 3; //MEM_Read
     localparam MEM_WRITE = 4; //MEM_W
-    localparam A_WRITE = 5; 
-    localparam B_WRITE = 6;
+    localparam MASK_1 = 5;
+    localparam MASK_2 = 6;
     localparam REG_DST = 7; //Reg_dst
-    localparam SRC_A = 8; //ShiftSrc
-    localparam SRC_B = 9; //AluSrc
+    localparam SHIFT_SRC = 8; //ShiftSrc
+    localparam ALU_SRC = 9; //AluSrc
     localparam ALU_OP0 = 10; //Op0
     localparam ALU_OP1= 11;  //Op1
     localparam ALU_OP2 = 12; //Op2

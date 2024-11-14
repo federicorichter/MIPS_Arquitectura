@@ -7,6 +7,7 @@ module execution#(
     input wire i_shift_mux_a,
     input wire i_src_alu_b,
     input wire i_reg_dst,
+    input wire i_is_unsigned,
     input wire [ALU_OP_SIZE-1:0]i_alu_op,
     input wire [SIZE-1:0] i_data_a,
     input wire [SIZE-1:0] i_data_b,
@@ -19,7 +20,7 @@ module execution#(
 );  
     wire [SIZE-1:0] alu_a_data;
     wire [SIZE-1:0] alu_b_data;
-    wire [SIZE-1:0] alu_op;
+    wire [OP_SIZE-1:0] alu_op;
     
     mux #(
         .BITS_ENABLES(1),
@@ -27,7 +28,7 @@ module execution#(
     )
     mux_reg_dest (
         i_reg_dst,
-        {i_rt_add,i_rd_add},
+        {i_rd_add,i_rt_add},
         o_reg_add
     );
 
@@ -37,7 +38,7 @@ module execution#(
     )
     mux_b (
         i_src_alu_b,
-        {i_data_b, i_sign_ext},
+        {i_sign_ext,i_data_b},
         alu_b_data
     );
 
@@ -47,7 +48,7 @@ module execution#(
     )
     mux_shift (
         i_shift_mux_a,
-        {i_data_a,{27'b0, i_sign_ext[10 : 6]}},
+        {{27'b0, i_sign_ext[10 : 6]},i_data_a},
         alu_a_data
     );
 
@@ -57,6 +58,7 @@ module execution#(
         .ALU_FUNC_SIZE(OP_SIZE)
      ) alu_control(
         .i_alu_op(i_alu_op),
+        .i_is_unsigned(i_is_unsigned),
         .i_alu_function(i_sign_ext[OP_SIZE-1: 0]),
         .o_alu_func(alu_op)
     );

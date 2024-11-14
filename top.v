@@ -39,7 +39,7 @@ module mips #(
     wire [4:0] rs_dir, rd_dir, rt_dir;
     wire [CONTROL_SIZE-1:0] control_signals;
     wire [63:0] if_to_id;
-    wire [120:0] id_to_ex;
+    wire [123:0] id_to_ex;
     wire [4:0]reg_address;
     wire [SIZE-1:0] reg_alu_res;
     wire [SIZE-1:0] reg_mem_data;
@@ -107,6 +107,7 @@ module mips #(
     ) ID_EX (
         .clk(clk),
         .rst(rst),
+        .i_enable(~i_stall),
         .i_data({
             //if_to_id[63:32],
             reg_a,
@@ -133,6 +134,7 @@ module mips #(
         .ALU_OP_SIZE(3)
     ) EX (
         .clk(clk),
+        .i_is_unsigned(id_to_ex[15]),
         .i_shift_mux_a(id_to_ex[9]),
         .i_src_alu_b(id_to_ex[8]),
         .i_reg_dst(id_to_ex[10]),

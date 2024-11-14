@@ -26,7 +26,12 @@ module register_bank #(
     always@(posedge clk)begin
         if(rst)begin
             for (i = 0 ; i < NUM_REGISTERS ; i = i + 1)begin
-                registers[i] <= 0;
+                if(i==1)begin
+                    registers[i] <= 1;    
+                end 
+                else begin
+                    registers[i] <= 3;
+                end
             end
         end
         else if(i_write_enable && i_w_dir != 0)begin

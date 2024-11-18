@@ -224,6 +224,6 @@ module mips #(
         .i_res_alu(mem_to_wb[70:39]),
         .o_data_wb(data_write_reg)
     );
-    assign address_write_reg = (ex_to_mem[75] == 1 ? mem_to_wb[6:0] : 5'b0 );
+    assign address_write_reg = (ex_to_mem[75] == 1 ? mem_to_wb[6:2] : 5'b0 );
 
 endmodule

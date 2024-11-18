@@ -23,7 +23,7 @@ module instruction_fetch #(
 
     initial begin
         instruction_mem[0] = 32'b00111100000000010000000000000001; // LUI R1, 1
-        instruction_mem[1] = 32'b00111100000000110000000000000010; // LUI R3, 2
+        instruction_mem[1] = 32'b00111100000000110000000000000011; // LUI R3, 2
         instruction_mem[2] = 32'b00111100000010110000000000000001; // NOP 
         instruction_mem[3] = 32'b00111100000010110000000000000001; // NOP
         instruction_mem[4] = 32'b00111100000010110000000000000001; // NOP

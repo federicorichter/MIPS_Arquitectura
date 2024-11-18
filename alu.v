@@ -5,7 +5,8 @@ module ALU #(
     input wire unsigned [DATA_WIDTH-1:0] i_A,
     input wire unsigned [DATA_WIDTH-1:0] i_B,
     input wire [MODE_WIDTH-1:0] i_mode,
-    output reg [DATA_WIDTH-1:0] o_result
+    output reg [DATA_WIDTH-1:0] o_result,
+    output wire o_zero
 );
 
     always @(*) begin
@@ -27,6 +28,8 @@ module ALU #(
             default: o_result = 6'b111111;  // Resultado por defecto
         endcase
     end
+
+    assign o_zero = (o_result == 0);
     
 
 endmodule

@@ -38,11 +38,18 @@ module mips #(
     wire [SIZE-1:0] immediate;
     wire [4:0] rs_dir, rd_dir, rt_dir;
     wire [CONTROL_SIZE-1:0] control_signals;
-    wire [63:0] if_to_id;
+    wire [31:0] if_to_id;
     wire [123:0] id_to_ex;
     wire [4:0]reg_address;
     wire [SIZE-1:0] reg_alu_res;
     wire [SIZE-1:0] reg_mem_data;
+    wire zero_alu;
+    wire [76:0] ex_to_mem;
+    wire [SIZE-1:0] mem_data;
+    wire pc_source;
+    wire [70:0] mem_to_wb;
+    wire [SIZE-1:0] data_write_reg;
+    wire [4:0] address_write_reg;
 
     
     instruction_fetch #(
@@ -53,21 +60,21 @@ module mips #(
         .rst(rst),
         .i_stall(i_stall),
         //.i_instruction_jump(), //bit control jump
-        .i_mux_selec(0), // selector del mux
+        .i_mux_selec(pc_source), // selector del mux
         .o_instruction(instruction), // salida:instruccion
         .o_adder(instruction_plus4)
     );
 
     latch #(
-        .BUS_DATA(64)
+        .BUS_DATA(32)
     )
     IF_ID (
         .clk(clk),
         .rst(rst),
         .i_enable(~i_stall),
         .i_data({
-            instruction,
-            instruction_plus4
+            instruction
+            //instruction_plus4
         }),
         .o_data(if_to_id)
     );
@@ -76,7 +83,7 @@ module mips #(
         .CONTROL_SIZE(CONTROL_SIZE)
     )
     control_unit(
-        .i_func(if_to_id[37:32]),
+        .i_func(if_to_id[5:0]),
         .i_opcode(operand),
         .o_control(control_signals)
     );
@@ -88,11 +95,12 @@ module mips #(
         .SIZE_OP(6)
     ) ID (
         .i_stall(i_stall),
-        .i_instruction(if_to_id[63:32]),
+        .i_instruction(if_to_id[31:0]),
         .rst(rst),
         .clk(clk),
-        //.i_w_dir(),
-        //.i_w_data,
+        .i_write_enable(mem_to_wb[1]),
+        .i_w_dir(address_write_reg),
+        .i_w_data(data_write_reg),
         .o_reg_A(reg_a),
         .o_reg_B(reg_b),
         .o_op(operand),
@@ -138,7 +146,7 @@ module mips #(
         .i_shift_mux_a(id_to_ex[9]),
         .i_src_alu_b(id_to_ex[8]),
         .i_reg_dst(id_to_ex[10]),
-        .i_alu_op(id_to_ex[7:5]),
+        .i_alu_op({id_to_ex[7],id_to_ex[6], id_to_ex[5]}),
         .i_data_a(id_to_ex[123:92]),
         .i_data_b(id_to_ex[91:60]),
         .i_sign_ext(id_to_ex[59:28]),
@@ -146,9 +154,76 @@ module mips #(
         .i_rd_add(id_to_ex[22:18]),
         .o_reg_add(reg_address),
         .o_alu_res(reg_alu_res),
-        .o_mem_data(reg_mem_data)
-
+        .o_mem_data(reg_mem_data),
+        .o_zero(zero_alu)
     );
 
+    latch #(
+        .BUS_DATA(77)
+    ) EX_MEM (
+        .clk(clk),
+        .rst(rst),
+        .i_enable(~i_stall),
+        .i_data({
+            id_to_ex[4], //MEM_TO_REG [76]
+            id_to_ex[17], //REG_WRITE [75]
+            id_to_ex[12], //MASK_1 [74]
+            id_to_ex[11], //MASK_2 [73]
+            id_to_ex[16], //BRANCH [72]
+            id_to_ex[13], //MEM_WRITE [71]
+            id_to_ex[14], //MEM_READ [70]
+            zero_alu, // 1 bit [69]
+            reg_alu_res, // 32 bits [68:37]
+            reg_mem_data, // 32 bits [36:5]
+            reg_address  //destiny reg - 5bits [4:0]
+        }),
+        .o_data(ex_to_mem)
+    );
+
+    data_memory #(
+        .DATA_WIDTH(SIZE),
+        .MEM_SIZE(1024)
+    ) MEM (
+        .clk(clk),
+        .rst(rst),
+        .i_mem_write(ex_to_mem[71]),
+        .i_mem_read(ex_to_mem[70]),
+        .i_zero_alu(ex_to_mem[69]),
+        .i_branch(ex_to_mem[72]),
+        .addr(ex_to_mem[68:37]),
+        .write_data(ex_to_mem[36:5]),
+        .i_mask_1(ex_to_mem[74]),
+        .i_mask_2(ex_to_mem[73]),
+        .read_data(mem_data),
+        //.debug_addr(),
+        //.debug_data()
+        .o_pc_source(pc_source)
+    );
+
+    latch #(
+        .BUS_DATA(71)
+    ) MEM_WB (
+        .clk(clk),
+        .rst(rst),
+        .i_enable(~i_stall),
+        .i_data({
+            ex_to_mem[68:37], // alu result [70:39]
+            mem_data, // data read from memory [38:7]
+            ex_to_mem[4:0], //reg destiny [6:2]
+            ex_to_mem[75], //REG_WRITE [1]
+            ex_to_mem[76] //MEM_TO_REG [0]
+        }),
+        .o_data(mem_to_wb)
+    );
+
+    write_back #(
+        .SIZE(SIZE)
+    ) WB (
+        .i_mem_to_reg(mem_to_wb[0]),
+        .i_data_read(mem_to_wb[38:7]),
+        .i_res_alu(mem_to_wb[70:39]),
+        .o_data_wb(data_write_reg)
+    );
+    assign address_write_reg = (ex_to_mem[75] == 1 ? mem_to_wb[6:0] : 5'b0 );
 
 endmodule

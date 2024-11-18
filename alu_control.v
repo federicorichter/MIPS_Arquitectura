@@ -21,15 +21,15 @@ module control_alu#(
 
     always @(*) begin
         case({i_alu_op,i_is_unsigned}) 
-            {ALU_SUB, 0} : alu_func = 6'b100010; //signed sub
-            {ALU_ADD, 0} : alu_func = 6'b100000; //signed add
-            {ALU_SLT, 0} : alu_func = 6'b101000; //signed slt
-            {ALU_SUB, 1} : alu_func = 6'b100011; //unsigned sub 
-            {ALU_ADD, 1} : alu_func = 6'b100001; //unsigned add
-            {ALU_SLT, 1} : alu_func = 6'b101001; //unsigned slt
-            {ALU_AND, 0} : alu_func = 6'b100100; 
-            {ALU_OR,0}  : alu_func = 6'b100101;
-            {ALU_XOR,0} : alu_func = 6'b100110;
+            {ALU_SUB, 1'b0} : alu_func = 6'b100010; //signed sub
+            {ALU_ADD, 1'b0} : alu_func = 6'b100000; //signed add
+            {ALU_SLT, 1'b0} : alu_func = 6'b101000; //signed slt
+            {ALU_SUB, 1'b1} : alu_func = 6'b100011; //unsigned sub 
+            {ALU_ADD, 1'b1} : alu_func = 6'b100001; //unsigned add
+            {ALU_SLT, 1'b1} : alu_func = 6'b101001; //unsigned slt
+            {ALU_AND, 1'b0} : alu_func = 6'b100100; 
+            {ALU_OR,1'b0}  : alu_func = 6'b100101;
+            {ALU_XOR,1'b0} : alu_func = 6'b100110;
             default : alu_func = i_alu_function;
         endcase
     end

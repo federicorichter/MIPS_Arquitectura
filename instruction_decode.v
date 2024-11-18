@@ -12,6 +12,7 @@ module instruction_decode #(
     
     input wire [SIZE_REG_DIR-1:0] i_w_dir,
     input wire [SIZE-1:0] i_w_data,
+    input wire i_write_enable,
 
     output wire [SIZE-1:0] o_reg_A,
     output wire [SIZE-1:0] o_reg_B,

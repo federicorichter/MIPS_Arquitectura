@@ -1,6 +1,6 @@
 module instruction_fetch #(
     parameter SIZE = 32,
-    parameter MAX_INSTRUCTION = 3
+    parameter MAX_INSTRUCTION = 9
 )
 (
     input wire clk,
@@ -19,14 +19,18 @@ module instruction_fetch #(
     wire [(SIZE * 2)-1:0]input_mux;
     wire [SIZE - 1:0] pc_next; 
 
-    reg [SIZE-1:0] instruction_mem [ADDRESS_SIZE-1:0];  // Declarar como "reg"
+    reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
 
     initial begin
-        instruction_mem[0] = 32'b00111100000000010000000000000001;
-        instruction_mem[1] = 32'b00111100000000100000000000000001;
-        instruction_mem[2] = 32'b00000000000000010001000000100001;
-        
-        //instruction_mem[3] = 32'h00C00000;
+        instruction_mem[0] = 32'b00111100000000010000000000000001; // LUI R1, 1
+        instruction_mem[1] = 32'b00111100000000110000000000000010; // LUI R3, 2
+        instruction_mem[2] = 32'b00111100000010110000000000000001; // NOP 
+        instruction_mem[3] = 32'b00111100000010110000000000000001; // NOP
+        instruction_mem[4] = 32'b00111100000010110000000000000001; // NOP
+        instruction_mem[5] = 32'b00111100000010110000000000000001; // NOP
+        instruction_mem[6] = 32'b00111100000010110000000000000001; // NOP
+        instruction_mem[7] = 32'b00111100000010110000000000000001; // NOP
+        instruction_mem[8] = 32'b00000000001000110011100000100001; // ADDU R7, R1, R3
     end
 
     adder#(
@@ -52,7 +56,7 @@ module instruction_fetch #(
             pc <= 32'b0;
         else
         if(!i_stall) begin
-            if(pc_next < MAX_INSTRUCTION) begin
+            if(pc_next < MAX_INSTRUCTION -1) begin
                 pc <= pc_next;
             end
             else begin

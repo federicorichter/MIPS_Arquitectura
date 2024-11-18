@@ -1,7 +1,8 @@
 module execution#(
     parameter SIZE = 32,
     parameter OP_SIZE = 6,
-    parameter ALU_OP_SIZE = 3
+    parameter ALU_OP_SIZE = 3,
+    parameter ADDRESS_SIZE = 5
 )(  
     input wire clk,
     input wire i_shift_mux_a,
@@ -12,15 +13,17 @@ module execution#(
     input wire [SIZE-1:0] i_data_a,
     input wire [SIZE-1:0] i_data_b,
     input wire [SIZE-1:0] i_sign_ext,
-    input wire [SIZE-1:0] i_rt_add,
-    input wire [SIZE-1:0] i_rd_add,
-    output wire [SIZE-1:0] o_reg_add,
+    input wire [ADDRESS_SIZE-1:0] i_rt_add,
+    input wire [ADDRESS_SIZE-1:0] i_rd_add,
+    output wire [ADDRESS_SIZE-1:0] o_reg_add,
     output wire [SIZE-1:0] o_alu_res,
-    output wire [SIZE-1:0] o_mem_data
+    output wire [SIZE-1:0] o_mem_data,
+    output wire o_zero
 );  
     wire [SIZE-1:0] alu_a_data;
     wire [SIZE-1:0] alu_b_data;
     wire [OP_SIZE-1:0] alu_op;
+    wire zero_alu;
     
     mux #(
         .BITS_ENABLES(1),
@@ -70,9 +73,11 @@ module execution#(
         .i_A(alu_a_data),
         .i_B(alu_b_data),
         .i_mode(alu_op),
-        .o_result(o_alu_res)
+        .o_result(o_alu_res),
+        .o_zero(zero_alu)
     );
 
     assign o_mem_data = i_data_b;
-
+    assign o_zero = zero_alu;
+    
 endmodule

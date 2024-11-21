@@ -1,6 +1,6 @@
 module instruction_fetch #(
     parameter SIZE = 32,
-    parameter MAX_INSTRUCTION = 9
+    parameter MAX_INSTRUCTION = 10
 )
 (
     input wire clk,
@@ -22,15 +22,16 @@ module instruction_fetch #(
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
 
     initial begin
-        instruction_mem[0] = 32'b00111100000000010000000000000001; // LUI R1, 1
+        instruction_mem[0] = 32'b00111100000000010000000100000001; // LUI R1, 1
         instruction_mem[1] = 32'b00111100000000110000000000000011; // LUI R3, 2
         instruction_mem[2] = 32'b00111100000010110000000000000001; // NOP 
         instruction_mem[3] = 32'b00111100000010110000000000000001; // NOP
-        instruction_mem[4] = 32'b00111100000010110000000000000001; // NOP
+        instruction_mem[4] = 32'b10100000001000010000000000000001; // SH, R1 -> MEM[1]
         instruction_mem[5] = 32'b00111100000010110000000000000001; // NOP
         instruction_mem[6] = 32'b00111100000010110000000000000001; // NOP
-        instruction_mem[7] = 32'b00111100000010110000000000000001; // NOP
+        instruction_mem[7] = 32'b10000000001001010000000000000001; // LH, R5 <- MEM[1]
         instruction_mem[8] = 32'b00000000001000110011100000100001; // ADDU R7, R1, R3
+        
     end
 
     adder#(

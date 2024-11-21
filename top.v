@@ -118,11 +118,11 @@ module mips #(
         .i_enable(~i_stall),
         .i_data({
             //if_to_id[63:32],
-            reg_a,
-            reg_b,
-            immediate,
-            rt_dir,
-            rd_dir,
+            reg_a, // [121:92]
+            reg_b, // [91:60]
+            immediate, // [59:28]
+            rt_dir, // [27:23]
+            rd_dir, // [22:18]
             control_signals[REG_WRITE], control_signals[BRANCH],
             control_signals[UNSIGNED], control_signals[MEM_READ],
             control_signals[MEM_WRITE], control_signals[MASK_1],

@@ -1,6 +1,6 @@
 module data_memory #(
     parameter DATA_WIDTH = 32,
-    parameter MEM_SIZE = 4096, // Tamaño de la memoria en bytes
+    parameter MEM_SIZE = 64, // Tamaño de la memoria en bytes
     parameter ADDR_WIDTH = $clog2(MEM_SIZE)
 )(
     input wire clk,

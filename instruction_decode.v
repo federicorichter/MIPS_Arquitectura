@@ -14,6 +14,21 @@ module instruction_decode #(
     input wire [SIZE-1:0] i_w_data,
     input wire i_write_enable,
 
+    input wire [SIZE_REG_DIR-1:0] i_rd_ex_mem,
+    input wire [SIZE_REG_DIR-1:0] i_rd_mem_wb,
+    input wire [SIZE_REG_DIR-1:0] i_rd_id_ex,
+    
+    input wire i_reg_wr_id_ex,
+    input wire i_reg_wr_ex_mem,
+    input wire i_reg_wr_mem_wb,
+
+    input wire [SIZE-1:0] i_rs_ex,
+    input wire [SIZE-1:0] i_rt_ex,
+
+    input wire [SIZE-1:0] i_data_id_ex,
+    input wire [SIZE-1:0] i_data_ex_mem,
+    input wire [SIZE-1:0] i_data_mem_wb,
+
     output wire [SIZE-1:0] o_reg_A,
     output wire [SIZE-1:0] o_reg_B,
 
@@ -24,27 +39,44 @@ module instruction_decode #(
     output wire [SIZE_REG_DIR-1:0] o_dir_rs,
     output wire [SIZE_REG_DIR-1:0] o_dir_rt,
     output wire [SIZE_REG_DIR-1:0] o_dir_rd
+    //output wire [1:0] o_mux_a,
+    //output wire [1:0] o_mux_b
 );
     reg[SIZE-1:0] reg_jump;
+    wire [1:0] i_mux_A, i_mux_B;
+    wire [SIZE-1:0] reg_a, reg_b;
+
+    forwarding_unit #(
+        .TAM_BITS_FORWARD(2),
+        .TAM_DIREC_REG(5)
+    ) forwarding_unit(
+        .i_rs_id_ex(i_instruction[25:21]),
+        .i_rt_id_ex(i_instruction[20:16]),
+        .i_rd_ex_mem(i_rd_ex_mem),
+        .i_rd_mem_wb(i_rd_mem_wb),
+        .i_reg_wr_ex_mem(i_reg_wr_ex_mem),
+        .i_reg_wr_mem_wb(i_reg_wr_mem_wb),
+        .o_forward_a(i_mux_A),
+        .o_forward_b(i_mux_B)
+    );
 
     mux #(
         .BITS_ENABLES(2),
         .BUS_SIZE(SIZE)
     ) mux_A(
-        .i_en(),
-        .i_data(),
-        .o_data()
+        .i_en(i_mux_A),
+        .i_data({i_data_id_ex,i_data_ex_mem,i_data_mem_wb,reg_a}),
+        .o_data(o_reg_A)
     );
 
     mux #(
         .BITS_ENABLES(2),
         .BUS_SIZE(SIZE)
     ) mux_B(
-        .i_en(),
-        .i_data(),
-        .o_data()
+        .i_en(i_mux_B),
+        .i_data({i_data_id_ex,i_data_ex_mem,i_data_mem_wb,reg_b}),
+        .o_data(o_reg_B)
     );
-
 
     register_bank#(
         .SIZE(SIZE),
@@ -57,8 +89,8 @@ module instruction_decode #(
         .i_dir_regB(i_instruction[20:16]),
         .i_w_dir(i_w_dir),
         .i_w_data(i_w_data),
-        .o_reg_A(o_reg_A),
-        .o_reg_B(o_reg_B)
+        .o_reg_A(reg_a),
+        .o_reg_B(reg_b)
     );
 
     sing_extender sign_extender(

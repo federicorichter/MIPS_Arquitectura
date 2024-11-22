@@ -1,6 +1,6 @@
 module instruction_fetch #(
     parameter SIZE = 32,
-    parameter MAX_INSTRUCTION = 10
+    parameter MAX_INSTRUCTION = 11
 )
 (
     input wire clk,
@@ -22,16 +22,27 @@ module instruction_fetch #(
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
 
     initial begin
-        instruction_mem[0] = 32'b00111100000000010000000100000001; // LUI R1, 1
+        /*instruction_mem[0] = 32'b00111100000000010000000100000001; // LUI R1, 1
         instruction_mem[1] = 32'b00111100000000110000000000000011; // LUI R3, 2
         instruction_mem[2] = 32'b00111100000010110000000000000001; // NOP 
         instruction_mem[3] = 32'b00111100000010110000000000000001; // NOP
-        instruction_mem[4] = 32'b10100000001000010000000000000001; // SH, R1 -> MEM[1]
+        instruction_mem[4] = 32'b10100100001000010000000000000001; // SH, R1 -> MEM[1]
         instruction_mem[5] = 32'b00111100000010110000000000000001; // NOP
         instruction_mem[6] = 32'b00111100000010110000000000000001; // NOP
-        instruction_mem[7] = 32'b10000000001001010000000000000001; // LH, R5 <- MEM[1]
-        instruction_mem[8] = 32'b00000000001000110011100000100001; // ADDU R7, R1, R3
-        
+        instruction_mem[7] = 32'b10000100001001010000000000000001; // LH, R5 <- MEM[1]
+        instruction_mem[8] = 32'b00000000001000110011100000100001; // ADDU R7, R1, R3*/
+
+        instruction_mem[0] = 32'b00111100000000010000000000000011; // R1 = 3
+        instruction_mem[1] = 32'b00111100000000100000000000000001; // R2 = 1
+        instruction_mem[2] = 32'b00111100000000110000000000001001; // R3 = 9
+        instruction_mem[3] = 32'b00111100000001000000000000000111; // R4 = 7
+        instruction_mem[4] = 32'b00111100000001010000000000000011; // R5 = 3
+        instruction_mem[5] = 32'b00111100000001100000000001100101; // R6 = 101
+        instruction_mem[6] = 32'b00111100000001110000000000011001; // R7 = 25 
+        instruction_mem[7] = 32'b00000000001000100001100000100011; // R3 = R1 - R2 -> 2
+        instruction_mem[8] = 32'b00111100000001110000000000011001; // R7 = 25
+        instruction_mem[9] = 32'b00000000011001000010100000100001; // R5 = R3 + R4 -> 9
+        instruction_mem[10] = 32'b00000000011001100011100000100001; // R7 = R3 + R6 -> 103
     end
 
     adder#(

@@ -39,7 +39,7 @@ module mips #(
     wire [4:0] rs_dir, rd_dir, rt_dir;
     wire [CONTROL_SIZE-1:0] control_signals;
     wire [31:0] if_to_id;
-    wire [123:0] id_to_ex;
+    wire [128:0] id_to_ex;
     wire [4:0]reg_address;
     wire [SIZE-1:0] reg_alu_res;
     wire [SIZE-1:0] reg_mem_data;
@@ -50,11 +50,11 @@ module mips #(
     wire [70:0] mem_to_wb;
     wire [SIZE-1:0] data_write_reg;
     wire [4:0] address_write_reg;
+    wire [1:0] mux_a_ex, mux_b_ex;
 
     
     instruction_fetch #(
-        .SIZE(32),
-        .MAX_INSTRUCTION(10)
+        .SIZE(32)
     ) IF (
         .clk(clk),
         .rst(rst),
@@ -101,6 +101,19 @@ module mips #(
         .i_write_enable(mem_to_wb[1]),
         .i_w_dir(address_write_reg),
         .i_w_data(data_write_reg),
+        .i_rd_id_ex(reg_address),
+        .i_rd_ex_mem(ex_to_mem[4:0]),
+        .i_rd_mem_wb(address_write_reg),
+        .i_reg_wr_id_ex(id_to_ex[17]),
+        .i_data_id_ex(reg_alu_res),
+        .i_data_ex_mem(mem_data),
+        .i_data_mem_wb(data_write_reg),
+        .i_reg_wr_ex_mem(ex_to_mem[75]),
+        .i_reg_wr_mem_wb(mem_to_wb[1]),
+        //.i_rs_ex(id_to_ex[128:124]),
+        //.i_rt_ex(id_to_ex[27:23]),
+        //.o_mux_a(mux_a_ex),
+        //.o_mux_b(mux_b_ex),
         .o_reg_A(reg_a),
         .o_reg_B(reg_b),
         .o_op(operand),
@@ -111,14 +124,15 @@ module mips #(
     );
 
     latch #(
-        .BUS_DATA(124)
+        .BUS_DATA(129)
     ) ID_EX (
         .clk(clk),
         .rst(rst),
         .i_enable(~i_stall),
         .i_data({
             //if_to_id[63:32],
-            reg_a, // [121:92]
+            rs_dir, // [128:124]
+            reg_a, // [123:92]
             reg_b, // [91:60]
             immediate, // [59:28]
             rt_dir, // [27:23]
@@ -152,6 +166,10 @@ module mips #(
         .i_sign_ext(id_to_ex[59:28]),
         .i_rt_add(id_to_ex[27:23]),
         .i_rd_add(id_to_ex[22:18]),
+        //.i_data_ex(ex_to_mem[68:37]),
+        //.i_data_mem(data_write_reg),
+        //.i_mux_A(mux_a_ex),
+        //.i_mux_B(mux_b_ex),
         .o_reg_add(reg_address),
         .o_alu_res(reg_alu_res),
         .o_mem_data(reg_mem_data),

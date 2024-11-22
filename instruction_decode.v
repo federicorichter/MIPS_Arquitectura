@@ -50,9 +50,10 @@ module instruction_decode #(
         .TAM_BITS_FORWARD(2),
         .TAM_DIREC_REG(5)
     ) forwarding_unit(
-        .i_rs_id_ex(i_instruction[25:21]),
-        .i_rt_id_ex(i_instruction[20:16]),
+        .i_rs_id_ex(i_rs_ex),
+        .i_rt_id_ex(i_rt_ex),
         .i_rd_ex_mem(i_rd_ex_mem),
+        //.i_rd_id_ex(i_rd_id_ex),
         .i_rd_mem_wb(i_rd_mem_wb),
         .i_reg_wr_ex_mem(i_reg_wr_ex_mem),
         .i_reg_wr_mem_wb(i_reg_wr_mem_wb),
@@ -74,7 +75,7 @@ module instruction_decode #(
         .BUS_SIZE(SIZE)
     ) mux_B(
         .i_en(i_mux_B),
-        .i_data({i_data_id_ex,i_data_ex_mem,i_data_mem_wb,reg_b}),
+        .i_data({i_data_id_ex,i_data_mem_wb,i_data_ex_mem,reg_b}),
         .o_data(o_reg_B)
     );
 

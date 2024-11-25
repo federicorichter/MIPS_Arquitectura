@@ -1,91 +1,117 @@
-// Listing 4.20
-module fifo
-   #(
-    parameter B=8, // number of bits in a word
-              W=4  // number of address bits
-   )
-   (
-    input wire clk, reset,
-    input wire rd, wr,
-    input wire [B-1:0] w_data,
-    output wire empty, full,
-    output wire [B-1:0] r_data
-   );
+module fifoBuffer#
+(
+    parameter DATA_LEN = 8,
+    parameter PTR_LEN = 4
+)
+(
+    input wire i_clk,     
+    input wire i_reset,
+    input wire i_fifoRead,            
+    input wire i_fifoWrite,
+    input wire [DATA_LEN-1 : 0] i_dataToWrite,
+    output wire o_fifoEmpty,
+    output wire o_fifoFull,
+    output wire [DATA_LEN-1 : 0] o_dataToRead
+);
 
-   //signal declaration
-   reg [B-1:0] array_reg [2**W-1:0];  // register array
-   reg [W-1:0] w_ptr_reg, w_ptr_next, w_ptr_succ;
-   reg [W-1:0] r_ptr_reg, r_ptr_next, r_ptr_succ;
-   reg full_reg, empty_reg, full_next, empty_next;
-   wire wr_en;
+localparam NOP = 2'b00;
+localparam READ = 2'b01;
+localparam WRITE = 2'b10;
+localparam READWRITE = 2'b11;
 
-   // body
-   // register file write operation
-   always @(posedge clk)
-      if (wr_en)
-         array_reg[w_ptr_reg] <= w_data;
-   // register file read operation
-   assign r_data = array_reg[r_ptr_reg];
-   // write enabled only when FIFO is not full
-   assign wr_en = wr & ~full_reg;
 
-   // fifo control logic
-   // register for read and write pointers
-   always @(posedge clk)
-      if (reset)
-         begin
-            w_ptr_reg <= 0;
-            r_ptr_reg <= 0;
-            full_reg <= 1'b0;
-            empty_reg <= 1'b1;
-         end
-      else
-         begin
-            w_ptr_reg <= w_ptr_next;
-            r_ptr_reg <= r_ptr_next;
-            full_reg <= full_next;
-            empty_reg <= empty_next;
-         end
+//Signal declaration
+reg [DATA_LEN-1 : 0] arrayReg [(2**PTR_LEN)-1 : 0];
+reg [PTR_LEN-1 : 0] writePtrReg; 
+reg [PTR_LEN-1 : 0] writePtrNext; 
+reg [PTR_LEN-1 : 0] writePtrSucc;
 
-   // next-state logic for read and write pointers
-   always @*
-   begin
-      // successive pointer values
-      w_ptr_succ = w_ptr_reg + 1;
-      r_ptr_succ = r_ptr_reg + 1;
-      // default: keep old values
-      w_ptr_next = w_ptr_reg;
-      r_ptr_next = r_ptr_reg;
-      full_next = full_reg;
-      empty_next = empty_reg;
-      case ({wr, rd})
-         // 2'b00:  no op
-         2'b01: // read
-            if (~empty_reg) // not empty
-               begin
-                  r_ptr_next = r_ptr_succ;
-                  full_next = 1'b0;
-                  if (r_ptr_succ==w_ptr_reg)
-                     empty_next = 1'b1;
-               end
-         2'b10: // write
-            if (~full_reg) // not full
-               begin
-                  w_ptr_next = w_ptr_succ;
-                  empty_next = 1'b0;
-                  if (w_ptr_succ==r_ptr_reg)
-                     full_next = 1'b1;
-               end
-         2'b11: // write and read
-            begin
-               w_ptr_next = w_ptr_succ;
-               r_ptr_next = r_ptr_succ;
+reg [PTR_LEN-1 : 0] readPtrReg;
+reg [PTR_LEN-1 : 0] readPtrNext;
+reg [PTR_LEN-1 : 0] readPtrSucc;
+
+reg fullReg;
+reg fullNext;
+reg emptyReg;
+reg emptyNext;
+
+wire writeEnable;
+
+//Register file write operation
+always @(posedge i_clk) begin
+    if(writeEnable) begin
+        arrayReg[writePtrReg] <= i_dataToWrite;
+    end
+end
+
+//Register file read operation
+assign o_dataToRead = arrayReg[readPtrReg];
+
+//Write enable only when FIFO is not o_fifoFull
+assign writeEnable = i_fifoWrite & ~fullReg;
+
+//Fifo control logic
+//Register for read and write pointers
+always @(posedge i_clk) begin
+    if(i_reset) begin
+        writePtrReg <= 0;
+        readPtrReg <= 0;
+        fullReg <= 0;
+        emptyReg <= 1;
+    end
+    else begin
+        writePtrReg <= writePtrNext;
+        readPtrReg <= readPtrNext;
+        fullReg <= fullNext;
+        emptyReg <= emptyNext;
+    end
+end
+
+//Next-state logic for read and write pointers
+always @(*) begin
+    //Successive pointer values
+    writePtrSucc = writePtrReg + 1;
+    readPtrSucc = readPtrReg + 1; 
+    //Default: keep old values
+    writePtrNext = writePtrReg;
+    readPtrNext = readPtrReg;
+    fullNext = fullReg;
+    emptyNext = emptyReg;
+
+    case ({i_fifoWrite, i_fifoRead})
+        //NOP:
+        READ:
+            if (~emptyReg) begin
+                readPtrNext = readPtrSucc;
+                fullNext = 1'b0;
+                if (readPtrSucc==writePtrReg) begin
+                    emptyNext = 1'b1;
+                end
             end
-      endcase
-   end
+        WRITE:
+            if (~fullReg) begin
+                writePtrNext = writePtrSucc;
+                emptyNext = 1'b0;
+                if (writePtrSucc==readPtrReg) begin
+                    fullNext = 1'b1;
+                end
+            end
+        READWRITE:
+            begin
+                writePtrNext = writePtrSucc;
+                readPtrNext = readPtrSucc; 
+            end 
+        default:
+            begin
+                writePtrNext = writePtrNext;
+                readPtrNext = readPtrNext;
+            end
 
-   // output
-   assign full = full_reg;
-   assign empty = empty_reg;
+    endcase
+end
+
+//Output
+assign o_fifoFull = fullReg;
+assign o_fifoEmpty = emptyReg;
 
 endmodule

@@ -1,29 +1,31 @@
-module mod_m_counter
-   #(
-    parameter N=4, // number of bits in counter
-              M=10 // mod-M
-   )
-   (
-    input wire clk, reset,
-    output wire max_tick,
-    output wire [N-1:0] q
-   );
+module modMCounter#
+(
+    parameter COUNTER_BITS = 4, //Number of bits in counter
+    parameter COUNTER_MOD = 10 //Mod-M
+)
+(
+    input wire i_clk,
+    input wire i_reset,
+    output wire o_counterMaxTick
+);
 
-   //signal declaration
-   reg [N-1:0] r_reg;
-   wire [N-1:0] r_next;
+//Signal declaration
+reg [COUNTER_BITS-1 : 0] counterReg;
+wire [COUNTER_BITS-1 : 0] counterNext;
 
-   // body
-   // register
-   always @(posedge clk)
-      if (reset)
-         r_reg <= 0;
-      else
-         r_reg <= r_next;
+//Body
+//Register
+always @(posedge i_clk) begin
+    if (i_reset) begin
+        counterReg <= 0;
+    end
+    else begin
+        counterReg <= counterNext;
+    end
+end
 
-   // next-state logic
-   assign r_next = (r_reg==(M-1)) ? 0 : r_reg + 1;
-   assign max_tick = (r_reg==(M-1)) ? 1'b1 : 1'b0;
+//Next-state logic
+assign counterNext = (counterReg == (COUNTER_MOD-1)) ? 0 : counterReg + 1;
+assign o_counterMaxTick = (counterReg == (COUNTER_MOD-1)) ? 1'b1 : 1'b0;
 
-   assign q = r_reg;
 endmodule

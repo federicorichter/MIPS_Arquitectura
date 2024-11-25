@@ -2,8 +2,8 @@ module ALU #(
     parameter DATA_WIDTH = 8,  // Cantidad de bits parametrizable, por defecto 8
     parameter MODE_WIDTH = 6  // Cantidad de bits de modo parametrizable, por defecto 6
 )(
-    input wire unsigned [DATA_WIDTH-1:0] i_A,
-    input wire unsigned [DATA_WIDTH-1:0] i_B,
+    input wire [DATA_WIDTH-1:0] i_A,
+    input wire [DATA_WIDTH-1:0] i_B,
     input wire [MODE_WIDTH-1:0] i_mode,
     output reg [DATA_WIDTH-1:0] o_result,
     output wire o_zero

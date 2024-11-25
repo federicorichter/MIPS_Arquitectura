@@ -1,98 +1,118 @@
-//Listing 8.1
-module uart_rx
-   #(
-     parameter DBIT = 8,     // # data bits
-               SB_TICK = 16  // # ticks for stop bits
-   )
-   (
-    input wire clk, reset,
-    input wire rx, s_tick,
-    output reg rx_done_tick,
-    output wire [7:0] dout
-   );
+module uartRX#
+(
+    parameter DATA_LEN = 8,
+    parameter SB_TICK = 16
+)
+(
+    input wire i_clk,
+    input wire i_reset,
+    input wire i_uartRx,
+    input wire i_tick,
+    output reg o_rxDone,
+    output wire [DATA_LEN-1:0] o_rxDataOut 
+);
 
-   // symbolic state declaration
-   localparam [1:0]
-      idle  = 2'b00,
-      start = 2'b01,
-      data  = 2'b10,
-      stop  = 2'b11;
 
-   // signal declaration
-   reg [1:0] state_reg, state_next;
-   reg [3:0] s_reg, s_next;
-   reg [2:0] n_reg, n_next;
-   reg [7:0] b_reg, b_next;
+//Symbolic state declaration
+localparam [1:0] IDLE  = 2'b00;
+localparam [1:0] START = 2'b01;
+localparam [1:0] DATA  = 2'b10;
+localparam [1:0] STOP  = 2'b11;
 
-   // body
-   // FSMD state & data registers
-   always @(posedge clk)
-      if (reset)
-         begin
-            state_reg <= idle;
-            s_reg <= 0;
-            n_reg <= 0;
-            b_reg <= 0;
-         end
-      else
-         begin
-            state_reg <= state_next;
-            s_reg <= s_next;
-            n_reg <= n_next;
-            b_reg <= b_next;
-         end
+//Signal declaration
+reg [1:0] stateReg;  //Actual state
+reg [1:0] stateNext; //Next state
 
-   // FSMD next-state logic
-   always @*
-   begin
-      state_next = state_reg;
-      rx_done_tick = 1'b0;
-      s_next = s_reg;
-      n_next = n_reg;
-      b_next = b_reg;
-      case (state_reg)
-         idle:
-            if (~rx)
-               begin
-                  state_next = start;
-                  s_next = 0;
-               end
-         start:
-            if (s_tick)
-               if (s_reg==7)
-               begin             
-                   state_next = ~rx ? data : idle;
-                   s_next = 0;
-                   n_next = 0;
-               end               
-               else
-                  s_next = s_reg + 1;
-         data:
-            if (s_tick)
-               if (s_reg==(SB_TICK-1))
-                  begin
-                     s_next = 0;
-                     b_next = {rx, b_reg[7:1]};
-                     if (n_reg==(DBIT-1))
-                        state_next = stop ;
-                      else
-                        n_next = n_reg + 1;
-                   end
-               else
-                  s_next = s_reg + 1;
-         stop:
-            if (s_tick)
-               if (s_reg==(SB_TICK-1))
-                  begin
-                     state_next = idle;
-                     if(rx)
-                        rx_done_tick =1'b1;
-                  end
-               else
-                  s_next = s_reg + 1;
-      endcase
-   end
-   // output
-   assign dout = b_reg;
+reg [3:0] ticksReg;      //Register to count the number of ticks
+reg [3:0] ticksNext;
+
+reg [2:0] receivedBitsReg;     //Register to count the number of received bits
+reg [2:0] receivedBitsNext;
+
+reg [DATA_LEN-1:0] receivedByteReg;     //Register to save te received frame
+reg [DATA_LEN-1:0] receivedByteNext;
+
+//Finite State Machine with DATA (state and DATA registers)
+always @(posedge i_clk) begin
+    if (i_reset) begin
+        stateReg <= IDLE;
+        ticksReg <= 0;
+        receivedBitsReg <= 0;
+        receivedByteReg <= 0;
+    end
+    else begin
+        stateReg <= stateNext;
+        ticksReg <= ticksNext;
+        receivedBitsReg <= receivedBitsNext;
+        receivedByteReg <= receivedByteNext;
+    end
+end
+
+//Finite State Machine with DATA (next state logic)
+always @(*) begin
+    stateNext = stateReg;
+    o_rxDone = 1'b0;
+    ticksNext = ticksReg;
+    receivedBitsNext = receivedBitsReg;
+    receivedByteNext = receivedByteReg;
+
+    case (stateReg)
+        IDLE:
+            if (~i_uartRx) begin
+               stateNext = START;
+               ticksNext = 0; 
+            end
+        
+        START:
+            if (i_tick) begin
+                if (ticksReg == 7) begin
+                    stateNext = DATA;
+                    ticksNext = 0;
+                    receivedBitsNext = 0;
+                end
+                else begin
+                    ticksNext = ticksReg + 1;
+                end
+                
+            end
+
+        DATA:
+            if (i_tick) begin
+                if (ticksReg == 15) begin
+                    ticksNext = 0;
+                    receivedByteNext = {i_uartRx, receivedByteReg[DATA_LEN-1:1]};
+                    if (receivedBitsReg == (DATA_LEN-1)) begin
+                        stateNext = STOP;
+                    end
+                    else begin
+                        receivedBitsNext = receivedBitsReg + 1;
+                    end
+
+                end
+                else begin 
+                    ticksNext = ticksReg + 1;
+                end
+                
+            end
+        
+        STOP:
+            if (i_tick) begin
+                if (ticksReg == (SB_TICK-1)) begin
+                    stateNext = IDLE;
+                    if(i_uartRx) begin
+                        o_rxDone = 1'b1;
+                    end
+                end 
+                else begin
+                    ticksNext = ticksReg + 1;
+                end
+            end
+
+        default: 
+            stateNext = IDLE;   
+    endcase
+end
+
+assign o_rxDataOut = receivedByteReg;
 
 endmodule

@@ -1,13 +1,23 @@
 module mips #(
     parameter SIZE = 32,
     parameter SIZE_OP = 6,
-    parameter CONTROL_SIZE = 18
+    parameter CONTROL_SIZE = 18,
+    parameter IF_ID_SIZE = 32,
+    parameter ID_EX_SIZE = 129,
+    parameter EX_MEM_SIZE = 77,
+    parameter MEM_WB_SIZE = 71,
+    parameter ADDR_WIDTH = 32,
+    parameter MAX_INSTRUCTION = 64, // Define MAX_INSTRUCTION
+    parameter NUM_REGISTERS = 32,
+    parameter MEM_SIZE = 64 // Define MEM_SIZE
 )(
-    input wire clk,
-    input wire rst,
+    input wire i_rst,
     input wire i_stall,
-    input wire uart_rx,
-    output wire uart_tx
+    input wire i_uart_rx,
+    output wire o_uart_tx,
+    input wire i_clk,
+    output wire rx_done_tick, // Añadir señal de tick de recepción
+    output wire tx_done_tick  // Añadir señal de tick de transmisión
 );  
 
     //Control Bits
@@ -22,7 +32,7 @@ module mips #(
     localparam SHIFT_SRC = 8; //ShiftSrc
     localparam ALU_SRC = 9; //AluSrc
     localparam ALU_OP0 = 10; //Op0
-    localparam ALU_OP1= 11;  //Op1
+    localparam ALU_OP1 = 11; //Op1
     localparam ALU_OP2 = 12; //Op2
     localparam MEM_2_REG = 13; //MEM_ToREG
     localparam J_RET_DST = 14;
@@ -37,55 +47,78 @@ module mips #(
     wire [SIZE-1:0] immediate;
     wire [4:0] rs_dir, rd_dir, rt_dir;
     wire [CONTROL_SIZE-1:0] control_signals;
-    wire [31:0] if_to_id;
-    wire [128:0] id_to_ex;
     wire [4:0] reg_address;
     wire [SIZE-1:0] reg_alu_res;
     wire [SIZE-1:0] reg_mem_data;
     wire zero_alu;
-    wire [76:0] ex_to_mem;
     wire [SIZE-1:0] mem_data;
     wire pc_source;
-    wire [70:0] mem_to_wb;
     wire [SIZE-1:0] data_write_reg;
     wire [4:0] address_write_reg;
     wire [1:0] mux_a_ex, mux_b_ex;
     wire debug_clk;
-
-    // Debugger instance
+    wire [SIZE-1:0] instruction_memory [14:0]; // Memoria de instrucciones de depuración
+    wire [ADDR_WIDTH-1:0] debug_addr; // Dirección de depuración para la memoria de datos
+    wire [SIZE-1:0] debug_data; // Datos de depuración de la memoria de datos
+    wire i_inst_write_enable;
+    wire [ADDR_WIDTH-1:0] i_write_addr;
+    wire o_writing_instruction_mem;
+    wire [IF_ID_SIZE-1:0] if_to_id;
+    wire [ID_EX_SIZE-1:0] id_to_ex; // Declarar como arreglo
+    wire [EX_MEM_SIZE-1:0] ex_to_mem;
+    wire [MEM_WB_SIZE-1:0] mem_to_wb;
+    wire o_mode; // Wire to indicate the mode of operation for debugging
+    wire [NUM_REGISTERS*SIZE-1:0]i_registers_debug;
+    
+    
     debugger #(
         .SIZE(SIZE),
         .NUM_REGISTERS(32),
         .SIZE_OP(SIZE_OP),
-        .MEM_SIZE(1024),
-        .NUM_LATCHES(10) // Ajustar según el número real de latches
+        .MEM_SIZE(MEM_SIZE),
+        .IF_ID_SIZE(IF_ID_SIZE),
+        .ID_EX_SIZE(ID_EX_SIZE),
+        .EX_MEM_SIZE(EX_MEM_SIZE),
+        .MEM_WB_SIZE(MEM_WB_SIZE)
     ) dbg (
-        .clk(clk),
-        .reset(rst),
-        .uart_rx(uart_rx),
-        .uart_tx(uart_tx),
-        .registers(registers),
-        .latches(latches),
-        .data_memory(data_memory),
-        .instruction_memory(instruction_memory),
-        .mode_continuous(mode_continuous),
-        .mode_step(mode_step),
-        .debug_clk(debug_clk)
+        .i_clk(i_clk),
+        .i_reset(i_rst),
+        .i_uart_rx(i_uart_rx),
+        .o_uart_tx(o_uart_tx),
+        .i_IF_ID(if_to_id),
+        .i_ID_EX(id_to_ex),
+        .i_EX_MEM(ex_to_mem),
+        .i_MEM_WB(mem_to_wb),
+        .i_debug_data(debug_data),
+        .o_mode(o_mode),
+        .o_debug_clk(debug_clk),
+        .i_pc(pc),
+        .i_max_pc(MAX_INSTRUCTION - 1),
+        .o_debug_addr(debug_addr),
+        .o_inst_write_enable(i_inst_write_enable),
+        .o_write_addr(i_write_addr),
+        .o_write_data(i_write_data),
+        .i_registers_debug(i_registers_debug)
     );
-
+    
     // Use debug_clk for the rest of the design
     wire clk_to_use = debug_clk;
-
+    
     instruction_fetch #(
         .SIZE(32)
     ) IF (
-        .clk(clk_to_use),
-        .rst(rst),
-        .i_stall(i_stall),
-        //.i_instruction_jump(), //bit control jump
+        .i_clk(clk_to_use),
+        .i_rst(i_rst),
+        .i_stall(i_stall || o_writing_instruction_mem), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
+        .i_instruction_jump(), //bit control jump
         .i_mux_selec(pc_source), // selector del mux
         .o_instruction(instruction), // salida:instruccion
-        .o_adder(instruction_plus4)
+        .o_pc(pc), // salida: contador de programa
+        .o_adder(instruction_plus4),
+        .i_inst_write_enable(i_inst_write_enable), // habilitación de escritura
+        .i_write_addr(i_write_addr), // dirección de escritura
+        .i_write_data(i_write_data), // datos de escritura
+        .o_writing_instruction_mem(o_writing_instruction_mem) // Señal de control para indicar escritura en memoria de instrucciones
     );
 
     latch #(
@@ -93,8 +126,8 @@ module mips #(
     )
     IF_ID (
         .clk(clk_to_use),
-        .rst(rst),
-        .i_enable(~i_stall),
+        .rst(i_rst),
+        .i_enable(~i_stall && ~o_writing_instruction_mem),
         .i_data({
             instruction
             //instruction_plus4
@@ -114,12 +147,12 @@ module mips #(
     instruction_decode #(
         .SIZE(32),
         .NUM_REGISTERS(32),
-        //.SIZE_REG_DIR = $clog2(NUM_REGISTERS),
+        .SIZE_REG_DIR($clog2(NUM_REGISTERS)),
         .SIZE_OP(6)
     ) ID (
         .i_stall(i_stall),
         .i_instruction(if_to_id[31:0]),
-        .rst(rst),
+        .rst(i_rst),
         .clk(clk_to_use),
         .i_write_enable(mem_to_wb[1]),
         .i_w_dir(address_write_reg),
@@ -150,10 +183,9 @@ module mips #(
         .BUS_DATA(129)
     ) ID_EX (
         .clk(clk_to_use),
-        .rst(rst),
-        .i_enable(~i_stall),
+        .rst(i_rst),
+        .i_enable(~i_stall && ~o_writing_instruction_mem),
         .i_data({
-            //if_to_id[63:32],
             rs_dir, // [128:124]
             reg_a, // [123:92]
             reg_b, // [91:60]
@@ -203,8 +235,8 @@ module mips #(
         .BUS_DATA(77)
     ) EX_MEM (
         .clk(clk_to_use),
-        .rst(rst),
-        .i_enable(~i_stall),
+        .rst(i_rst),
+        .i_enable(~i_stall && ~o_writing_instruction_mem),
         .i_data({
             id_to_ex[4], //MEM_TO_REG [76]
             id_to_ex[17], //REG_WRITE [75]
@@ -226,7 +258,7 @@ module mips #(
         .MEM_SIZE(1024)
     ) MEM (
         .clk(clk_to_use),
-        .rst(rst),
+        .rst(i_rst),
         .i_mem_write(ex_to_mem[71]),
         .i_mem_read(ex_to_mem[70]),
         .i_zero_alu(ex_to_mem[69]),
@@ -236,8 +268,8 @@ module mips #(
         .i_mask_1(ex_to_mem[74]),
         .i_mask_2(ex_to_mem[73]),
         .read_data(mem_data),
-        //.debug_addr(),
-        //.debug_data()
+        .debug_addr(debug_addr), // Dirección de depuración
+        .debug_data(debug_data), // Datos de depuración
         .o_pc_source(pc_source)
     );
 
@@ -245,8 +277,8 @@ module mips #(
         .BUS_DATA(71)
     ) MEM_WB (
         .clk(clk_to_use),
-        .rst(rst),
-        .i_enable(~i_stall),
+        .rst(i_rst),
+        .i_enable(~i_stall && ~o_writing_instruction_mem),
         .i_data({
             ex_to_mem[68:37], // alu result [70:39]
             mem_data, // data read from memory [38:7]
@@ -266,5 +298,6 @@ module mips #(
         .o_data_wb(data_write_reg)
     );
     assign address_write_reg = (ex_to_mem[75] == 1 ? mem_to_wb[6:2] : 5'b0 );
+
 
 endmodule

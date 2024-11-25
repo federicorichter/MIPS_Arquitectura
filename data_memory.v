@@ -25,7 +25,7 @@ module data_memory #(
     reg [DATA_WIDTH-1:0] debug_data_reg;
     integer i;
 
-    always @(posedge clk or posedge rst) begin
+    always @(negedge clk or negedge rst) begin
         if (rst) begin
             // Inicializa toda la memoria a cero
             for (i = 0; i < MEM_SIZE; i = i + 1) begin
@@ -43,7 +43,7 @@ module data_memory #(
         end
     end
 
-    always @(negedge clk) begin
+    always @(posedge clk) begin
         if (i_mem_write && !rst) begin
             // Escribir 32 bits (4 bytes) en la memoria con enmascaramiento
             case ({i_mask_1, i_mask_2})

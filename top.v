@@ -5,8 +5,9 @@ module mips #(
 )(
     input wire clk,
     input wire rst,
-    input wire i_stall
-    //o_instruction
+    input wire i_stall,
+    input wire uart_rx,
+    output wire uart_tx
 );  
 
     //Control Bits
@@ -29,9 +30,7 @@ module mips #(
     localparam JUMP_SRC = 16;
     localparam JUMP_OR_B = 17;
 
-
-
-    wire [SIZE-1:0]instruction, instruction_plus4;
+    wire [SIZE-1:0] instruction, instruction_plus4;
     wire [SIZE-1:0] reg_a;
     wire [SIZE-1:0] reg_b;
     wire [SIZE_OP-1:0] operand;
@@ -40,7 +39,7 @@ module mips #(
     wire [CONTROL_SIZE-1:0] control_signals;
     wire [31:0] if_to_id;
     wire [128:0] id_to_ex;
-    wire [4:0]reg_address;
+    wire [4:0] reg_address;
     wire [SIZE-1:0] reg_alu_res;
     wire [SIZE-1:0] reg_mem_data;
     wire zero_alu;
@@ -51,12 +50,36 @@ module mips #(
     wire [SIZE-1:0] data_write_reg;
     wire [4:0] address_write_reg;
     wire [1:0] mux_a_ex, mux_b_ex;
+    wire debug_clk;
 
-    
+    // Debugger instance
+    debugger #(
+        .SIZE(SIZE),
+        .NUM_REGISTERS(32),
+        .SIZE_OP(SIZE_OP),
+        .MEM_SIZE(1024),
+        .NUM_LATCHES(10) // Ajustar según el número real de latches
+    ) dbg (
+        .clk(clk),
+        .reset(rst),
+        .uart_rx(uart_rx),
+        .uart_tx(uart_tx),
+        .registers(registers),
+        .latches(latches),
+        .data_memory(data_memory),
+        .instruction_memory(instruction_memory),
+        .mode_continuous(mode_continuous),
+        .mode_step(mode_step),
+        .debug_clk(debug_clk)
+    );
+
+    // Use debug_clk for the rest of the design
+    wire clk_to_use = debug_clk;
+
     instruction_fetch #(
         .SIZE(32)
     ) IF (
-        .clk(clk),
+        .clk(clk_to_use),
         .rst(rst),
         .i_stall(i_stall),
         //.i_instruction_jump(), //bit control jump
@@ -69,7 +92,7 @@ module mips #(
         .BUS_DATA(32)
     )
     IF_ID (
-        .clk(clk),
+        .clk(clk_to_use),
         .rst(rst),
         .i_enable(~i_stall),
         .i_data({
@@ -97,7 +120,7 @@ module mips #(
         .i_stall(i_stall),
         .i_instruction(if_to_id[31:0]),
         .rst(rst),
-        .clk(clk),
+        .clk(clk_to_use),
         .i_write_enable(mem_to_wb[1]),
         .i_w_dir(address_write_reg),
         .i_w_data(data_write_reg),
@@ -126,7 +149,7 @@ module mips #(
     latch #(
         .BUS_DATA(129)
     ) ID_EX (
-        .clk(clk),
+        .clk(clk_to_use),
         .rst(rst),
         .i_enable(~i_stall),
         .i_data({
@@ -155,7 +178,7 @@ module mips #(
         .OP_SIZE(6),
         .ALU_OP_SIZE(3)
     ) EX (
-        .clk(clk),
+        .clk(clk_to_use),
         .i_is_unsigned(id_to_ex[15]),
         .i_shift_mux_a(id_to_ex[9]),
         .i_src_alu_b(id_to_ex[8]),
@@ -179,7 +202,7 @@ module mips #(
     latch #(
         .BUS_DATA(77)
     ) EX_MEM (
-        .clk(clk),
+        .clk(clk_to_use),
         .rst(rst),
         .i_enable(~i_stall),
         .i_data({
@@ -202,7 +225,7 @@ module mips #(
         .DATA_WIDTH(SIZE),
         .MEM_SIZE(1024)
     ) MEM (
-        .clk(clk),
+        .clk(clk_to_use),
         .rst(rst),
         .i_mem_write(ex_to_mem[71]),
         .i_mem_read(ex_to_mem[70]),
@@ -221,7 +244,7 @@ module mips #(
     latch #(
         .BUS_DATA(71)
     ) MEM_WB (
-        .clk(clk),
+        .clk(clk_to_use),
         .rst(rst),
         .i_enable(~i_stall),
         .i_data({

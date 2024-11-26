@@ -52,6 +52,10 @@ module mips #(
     wire [4:0] address_write_reg;
     wire [1:0] mux_a_ex, mux_b_ex;
     wire hazard_output;
+    wire [SIZE-1:0] reg_a_conditional, reg_b_conditional;
+    wire reg_equal_conditional;
+    wire res_branch;
+    wire pc_plus_immediate;
 
     hazard_detection #(
         .SIZE_REG_DIR(5),
@@ -62,6 +66,8 @@ module mips #(
         .i_rt_id_ex(id_to_ex[27:23]),
         .i_mem_read_id_ex(id_to_ex[14]),
         .i_jump_brch(id_to_ex[0]),
+        .i_branch(pc_plus_immediate),
+        .o_flush(if_flush),
         .o_hazard(hazard_output)
     );
 
@@ -101,6 +107,32 @@ module mips #(
         .o_control(control_signals)
     );
 
+    assign reg_equal_conditional = reg_a_conditional == reg_b_conditional;
+
+    mux #(
+        .BITS_ENABLES(1),
+        .BUS_SIZE(1)
+    )
+    mux_eq_neq(
+        .i_en(control_signals[EQ_OR_NEQ]),
+        .i_data({reg_equal_conditional, ~reg_equal_conditional}),
+        .o_data(res_branch)
+    );
+
+    mux #(
+        .BITS_ENABLES(1),
+        .BUS_SIZE(SIZE)
+    )
+    mux_pc_immediate(
+        .i_en(pc_plus_immediate),
+        .i_data({immediate_suma_result, pc_suma_result}),
+        .o_data(o_mux_pc_immediate)
+    );
+    assign pc_plus_immediate = res_branch && control_signals[BRANCH];
+
+    
+
+
     instruction_decode #(
         .SIZE(32),
         .NUM_REGISTERS(32),
@@ -127,6 +159,8 @@ module mips #(
         .i_rt_ex(id_to_ex[27:23]),
         //.o_mux_a(mux_a_ex),
         //.o_mux_b(mux_b_ex),
+        .o_reg_A_branch(reg_a_conditional),
+        .o_reg_B_branch(reg_b_conditional),
         .o_reg_A(reg_a),
         .o_reg_B(reg_b),
         .o_op(operand),

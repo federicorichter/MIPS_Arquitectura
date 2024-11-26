@@ -32,6 +32,9 @@ module instruction_decode #(
     output wire [SIZE-1:0] o_reg_A,
     output wire [SIZE-1:0] o_reg_B,
 
+    output wire [SIZE-1:0] o_reg_A_branch,
+    output wire [SIZE-1:0] o_reg_B_branch,
+
     output wire [SIZE_OP-1:0] o_op,
 
     output wire [SIZE-1:0] o_immediate,
@@ -105,6 +108,8 @@ module instruction_decode #(
     assign o_dir_rd = i_instruction[15:11];
     assign o_dir_rs =   i_instruction[25:21]; 
     assign o_dir_rt =   i_instruction[20:16]; 
+    assign o_reg_A_branch = reg_a;
+    assign o_reg_B_branch = reg_b;
 
 
 endmodule

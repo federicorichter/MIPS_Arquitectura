@@ -83,7 +83,7 @@ module mips #(
     IF_ID (
         .clk(clk),
         .rst(rst),
-        .i_enable(~i_stall),
+        .i_enable(~i_stall && ~hazard_output),
         .i_data({
             instruction
             //instruction_plus4
@@ -119,7 +119,7 @@ module mips #(
         .i_rd_mem_wb(mem_to_wb[6:2]),
         .i_reg_wr_id_ex(id_to_ex[17]),
         .i_data_id_ex(reg_alu_res),
-        .i_data_ex_mem(ex_to_mem[68:37]),
+        .i_data_ex_mem(mem_data),
         .i_data_mem_wb(data_write_reg),
         .i_reg_wr_ex_mem(ex_to_mem[75]),
         .i_reg_wr_mem_wb(mem_to_wb[1]),

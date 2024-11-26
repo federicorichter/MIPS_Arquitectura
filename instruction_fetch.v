@@ -22,8 +22,8 @@ module instruction_fetch #(
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
 
     initial begin
-        instruction_mem[0] = 32'b00111100000000010000000100000001; // LUI R1, 1
-        instruction_mem[1] = 32'b00111100000000110000000000000011; // LUI R3, 2
+        instruction_mem[0] = 32'b00111100000000010000000000000001; // LUI R1, 1
+        instruction_mem[1] = 32'b00111100000000110000000000000011; // LUI R3, 3
         instruction_mem[2] = 32'b00111100000010110000000000000001; // NOP 
         instruction_mem[3] = 32'b00111100000010110000000000000001; // NOP
         instruction_mem[4] = 32'b10100100001000010000000000000001; // SH, R1 -> MEM[1]
@@ -32,7 +32,6 @@ module instruction_fetch #(
         instruction_mem[7] = 32'b10000100001001010000000000000001; // LH, R5 <- MEM[1]
         instruction_mem[8] = 32'b00000000101000110011100000100001; // R7 = R5 + R3 
         instruction_mem[9] = 32'b00111100000010110000000000000001; // NOP
-        instruction_mem[8] = 32'b00000000101000110011100000100001; // R7 = R5 + R3 
         instruction_mem[10] = 32'b00111100000010110000000000000001; // NOP
         instruction_mem[11] = 32'b00111100000010110000000000000001; // NOP
 

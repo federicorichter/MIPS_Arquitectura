@@ -69,8 +69,52 @@ module mips #(
     wire [MEM_WB_SIZE-1:0] mem_to_wb;
     wire o_mode; // Wire to indicate the mode of operation for debugging
     wire [NUM_REGISTERS*SIZE-1:0]i_registers_debug;
-    
-    
+    wire uart_rx_done, uart_tx_start, uart_tx_full, uart_rx_empty;
+    wire [7:0] uart_rx_data, uart_tx_data;
+    wire baud_tick;
+
+    // Instancia del generador de baudios
+    baudrate_generator #(
+        .COUNT(651) // Ajustar según la frecuencia de reloj y la tasa de baudios
+    ) baud_gen (
+        .clk(i_clk),
+        .reset(i_rst),
+        .tick(baud_tick)
+    );
+
+    // Instancia del receptor UART
+    uart_rx #(
+        .N(8),
+        .M(1),
+        .PARITY_EN(0),
+        .BAUD_RATE(9600),
+        .CLK_FREQ(100000000),
+        .COUNT_TICKS(16)
+    ) uart_rx_inst (
+        .tick(baud_tick),
+        .reset(i_rst),
+        .clk(i_clk),
+        .rx(i_uart_rx),
+        .data_out(uart_rx_data),
+        .valid(uart_rx_done),
+        .state_leds(),
+        .started()
+    );
+
+    // Instancia del transmisor UART
+    uart_tx #(
+        .N(8),
+        .COUNT_TICKS(16)
+    ) uart_tx_inst (
+        .clk(i_clk),
+        .reset(i_rst),
+        .tx_start(uart_tx_start),
+        .tick(baud_tick),
+        .data_in(uart_tx_data),
+        .tx_done(tx_done_tick),
+        .tx(o_uart_tx)
+    );
+
     debugger #(
         .SIZE(SIZE),
         .NUM_REGISTERS(32),
@@ -92,13 +136,17 @@ module mips #(
         .i_debug_data(debug_data),
         .o_mode(o_mode),
         .o_debug_clk(debug_clk),
-        .i_pc(pc),
-        .i_max_pc(MAX_INSTRUCTION - 1),
         .o_debug_addr(debug_addr),
         .o_inst_write_enable(i_inst_write_enable),
         .o_write_addr(i_write_addr),
         .o_write_data(i_write_data),
-        .i_registers_debug(i_registers_debug)
+        .i_registers_debug(i_registers_debug),
+        .uart_rx_done(uart_rx_done),
+        .uart_tx_start(uart_tx_start),
+        .uart_tx_full(uart_tx_full),
+        .uart_rx_empty(uart_rx_empty),
+        .uart_rx_data(uart_rx_data),
+        .uart_tx_data(uart_tx_data)
     );
     
     // Use debug_clk for the rest of the design
@@ -298,6 +346,5 @@ module mips #(
         .o_data_wb(data_write_reg)
     );
     assign address_write_reg = (ex_to_mem[75] == 1 ? mem_to_wb[6:2] : 5'b0 );
-
 
 endmodule

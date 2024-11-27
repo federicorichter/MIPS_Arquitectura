@@ -1,118 +1,138 @@
-module uartRX#
-(
-    parameter DATA_LEN = 8,
-    parameter SB_TICK = 16
-)
-(
-    input wire i_clk,
-    input wire i_reset,
-    input wire i_uartRx,
-    input wire i_tick,
-    output reg o_rxDone,
-    output wire [DATA_LEN-1:0] o_rxDataOut 
+module uart_rx #(
+    parameter N = 8,  // Number of data bits
+    parameter M = 1,  // Number of stop bits
+    parameter PARITY_EN = 0,  // Enable parity bit (0: disable, 1: enable)
+    parameter BAUD_RATE = 9600,  // Baud rate
+    parameter CLK_FREQ = 100000000,  // Clock frequency
+    parameter COUNT_TICKS = 16
+)(
+    input wire tick,
+    input wire reset,
+    input wire clk,
+    input wire rx,
+    output wire [N-1:0] data_out,
+    output wire valid,
+    output wire [2:0]state_leds,
+    output wire started
 );
 
+    reg valid_reg;
+    reg [N-1:0] received_byte, received_byte_next;
+    reg started_reg = 0;
 
-//Symbolic state declaration
-localparam [1:0] IDLE  = 2'b00;
-localparam [1:0] START = 2'b01;
-localparam [1:0] DATA  = 2'b10;
-localparam [1:0] STOP  = 2'b11;
+    localparam integer CYCLES_PER_BIT = CLK_FREQ / BAUD_RATE;
 
-//Signal declaration
-reg [1:0] stateReg;  //Actual state
-reg [1:0] stateNext; //Next state
+    localparam integer baud_counter_WIDTH = $clog2(CYCLES_PER_BIT);
 
-reg [3:0] ticksReg;      //Register to count the number of ticks
-reg [3:0] ticksNext;
+    localparam [2:0] IDLE = 000,
+                    START = 001,
+                    DATA = 010,
+                    PARITY = 011,
+                    STOP = 100;
+    
 
-reg [2:0] receivedBitsReg;     //Register to count the number of received bits
-reg [2:0] receivedBitsNext;
 
-reg [DATA_LEN-1:0] receivedByteReg;     //Register to save te received frame
-reg [DATA_LEN-1:0] receivedByteNext;
+    reg[2:0] state = IDLE;
+    reg[2:0] next_state;
 
-//Finite State Machine with DATA (state and DATA registers)
-always @(posedge i_clk) begin
-    if (i_reset) begin
-        stateReg <= IDLE;
-        ticksReg <= 0;
-        receivedBitsReg <= 0;
-        receivedByteReg <= 0;
+    // Shift register
+    //reg [N-1:0] shift_reg;
+    reg [baud_counter_WIDTH-1:0] baud_counter, baud_counter_reg;
+
+    integer bit_counter, bit_counter_reg;
+
+    // State machine
+    always @(posedge clk) begin
+        if (reset) begin
+            state <= IDLE;
+            baud_counter <= 0;
+            bit_counter <= 0;
+            received_byte <= {N,0};
+        end else if(clk) begin
+            state <= next_state;
+            baud_counter <= baud_counter_reg;
+            bit_counter <= bit_counter_reg;
+            received_byte <= received_byte_next;
+        end
     end
-    else begin
-        stateReg <= stateNext;
-        ticksReg <= ticksNext;
-        receivedBitsReg <= receivedBitsNext;
-        receivedByteReg <= receivedByteNext;
-    end
-end
 
-//Finite State Machine with DATA (next state logic)
-always @(*) begin
-    stateNext = stateReg;
-    o_rxDone = 1'b0;
-    ticksNext = ticksReg;
-    receivedBitsNext = receivedBitsReg;
-    receivedByteNext = receivedByteReg;
+    always @(*) begin
+    // Default assignments
+    next_state          = state;
+    valid_reg           = 1'b0; // Default to not done
+    baud_counter_reg = baud_counter;
+    bit_counter_reg = bit_counter;
+    received_byte_next  = received_byte;
 
-    case (stateReg)
-        IDLE:
-            if (~i_uartRx) begin
-               stateNext = START;
-               ticksNext = 0; 
+    // State machine for UART reception
+    case (state)
+        IDLE: begin
+            if (~rx) begin
+                // Transition to START state when the start bit (low) is detected
+                next_state  = START;
+                baud_counter_reg      = 0; // Reset bit timing counter
             end
+        end
         
-        START:
-            if (i_tick) begin
-                if (ticksReg == 7) begin
-                    stateNext = DATA;
-                    ticksNext = 0;
-                    receivedBitsNext = 0;
+        START: begin
+            if (tick) begin
+                if (baud_counter == 7) begin
+                    // Transition to DATA state after detecting start bit duration
+                    next_state  = DATA;
+                    baud_counter_reg      = 0; // Reset bit timing counter
+                    bit_counter_reg      = 0; // Reset data bit index
                 end
                 else begin
-                    ticksNext = ticksReg + 1;
+                    baud_counter_reg      = baud_counter + 1; // Increment bit timing counter
                 end
-                
             end
+        end
 
-        DATA:
-            if (i_tick) begin
-                if (ticksReg == 15) begin
-                    ticksNext = 0;
-                    receivedByteNext = {i_uartRx, receivedByteReg[DATA_LEN-1:1]};
-                    if (receivedBitsReg == (DATA_LEN-1)) begin
-                        stateNext = STOP;
+        DATA: begin
+            if (tick) begin
+                if (baud_counter == 15) begin
+                    // Read current data bit into received_byte
+                    baud_counter_reg = 0; // Reset bit timing counter
+                    received_byte_next = {rx, received_byte[N-1:1]}; // Shift in new bit
+                    if (bit_counter == (N - 1)) begin
+                        // If all data bits have been received, transition to STOP state
+                        next_state = STOP;
                     end
                     else begin
-                        receivedBitsNext = receivedBitsReg + 1;
+                        bit_counter_reg = bit_counter + 1; // Increment data bit index
                     end
-
                 end
-                else begin 
-                    ticksNext = ticksReg + 1;
-                end
-                
-            end
-        
-        STOP:
-            if (i_tick) begin
-                if (ticksReg == (SB_TICK-1)) begin
-                    stateNext = IDLE;
-                    if(i_uartRx) begin
-                        o_rxDone = 1'b1;
-                    end
-                end 
                 else begin
-                    ticksNext = ticksReg + 1;
+                    baud_counter_reg = baud_counter + 1; // Increment bit timing counter
                 end
             end
+        end
 
-        default: 
-            stateNext = IDLE;   
+        STOP: begin
+            if (tick) begin
+                if (baud_counter == (15)) begin
+                    started_reg = 1;
+                    // Transition back to IDLE state after receiving the stop bit
+                    next_state = IDLE;
+                    if (rx) begin
+                        valid_reg = 1'b1; // Indicate that reception is complete if stop bit is valid
+                    end
+                end
+                else begin
+                    baud_counter_reg = baud_counter + 1; // Increment bit timing counter
+                end
+            end
+        end
+
+        default: begin
+            next_state = IDLE; // Default state is IDLE
+        end
     endcase
 end
 
-assign o_rxDataOut = receivedByteReg;
+assign state_leds = state;
+assign data_out = received_byte;
+assign valid = valid_reg;
+assign started = started_reg;
 
 endmodule

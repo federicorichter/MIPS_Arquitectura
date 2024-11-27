@@ -1,157 +1,202 @@
+`timescale 1ns / 1ps
+
 module tb_top;
-    reg clk, rst, i_stall;
-    wire uart_tx, uart_rx;
-    reg [31:0] program [0:14]; // Programa a cargar en la memoria de instrucciones
-    integer i;
 
-    // Señales para el UART de la PC
-    reg pc_uart_tx_start;
-    reg [7:0] pc_uart_tx_data;
-    wire pc_uart_tx_done;
+    // Parameters
+    parameter SIZE = 32;
+    parameter SIZE_OP = 6;
+    parameter CONTROL_SIZE = 18;
+    parameter IF_ID_SIZE = 32;
+    parameter ID_EX_SIZE = 129;
+    parameter EX_MEM_SIZE = 77;
+    parameter MEM_WB_SIZE = 71;
+    parameter ADDR_WIDTH = 32;
+    parameter MAX_INSTRUCTION = 64;
+    parameter NUM_REGISTERS = 32;
+    parameter MEM_SIZE = 64;
+
+    // Signals
+    reg i_rst;
+    reg i_clk;
+    wire i_uart_rx;
+    wire o_uart_tx;
+    wire uart_rx_done;
+    wire uart_tx_start;
+    wire uart_tx_full;
+    wire uart_rx_empty;
+    wire [7:0] uart_rx_data;
+    wire [7:0] uart_tx_data;
+
+    // Signals for the second UART module (PC simulation)
+    wire pc_uart_rx;
+    wire pc_uart_tx;
     wire pc_uart_rx_done;
+    wire pc_uart_tx_start;
+    wire pc_uart_tx_full;
+    wire pc_uart_rx_empty;
     wire [7:0] pc_uart_rx_data;
+    reg [7:0] pc_uart_tx_data;
+    reg pc_uart_tx_start_reg;
+    reg pc_uart_rx_done_reg;
 
-    // Señales de tick para UART
-    wire rx_done_tick;
-    wire tx_done_tick;
-
-    initial begin
-        // Inicializar el reloj
-        clk = 0;
-        forever #10 clk = ~clk;  // Periodo de 20 ns, frecuencia de 50 MHz
-    end
-
-    initial begin
-        // Inicializar señales
-        rst = 1;
-        i_stall = 0;
-        pc_uart_tx_start = 0;
-
-        // Programa a cargar en la memoria de instrucciones
-        program[0] = 32'b00111100000000010000000000000011; // R1 = 3
-        program[1] = 32'b00111100000000100000000000000001; // R2 = 1
-        program[2] = 32'b00111100000000110000000000001001; // R3 = 9
-        program[3] = 32'b00111100000001000000000000000111; // R4 = 7
-        program[4] = 32'b00111100000001010000000000000011; // R5 = 3
-        program[5] = 32'b00111100000001100000000001100101; // R6 = 101
-        program[6] = 32'b00111100000001110000000000011001; // R7 = 25 
-        program[7] = 32'b00000000001000100001100000100011; // R3 = R1 - R2 -> 2
-        program[8] = 32'b00000000011001000010100000100001; // R5 = R3 + R4 -> 9
-        program[9] = 32'b00000000011001100011100000100001; // R7 = R3 + R6 -> 103
-        program[10] = 32'b00000000011001000010100000100001; // R15 = R3 + R5
-        program[11] = 32'b0; // R1 = 3
-        program[12] = 32'b00111100000000010000000000000011; // R1 = 3
-        program[13] = 32'b00111100000000010000000000000011; // R1 = 3
-        program[14] = 32'b00111100000000010000000000000011; // R1 = 3
-
-        // Resetear el sistema
-        #50;
-        rst = 0;
-
-        // Cargar el programa en la memoria de instrucciones a través del debugger
-        for (i = 0; i < 15; i = i + 1) begin
-            pc_uart_tx_data = program[i][7:0];
-            pc_uart_tx_start = 1;
-            #20;
-            pc_uart_tx_start = 0;
-            wait(pc_uart_tx_done);
-            #20;
-            pc_uart_tx_data = program[i][15:8];
-            pc_uart_tx_start = 1;
-            #20;
-            pc_uart_tx_start = 0;
-            wait(pc_uart_tx_done);
-            #20;
-            pc_uart_tx_data = program[i][23:16];
-            pc_uart_tx_start = 1;
-            #20;
-            pc_uart_tx_start = 0;
-            wait(pc_uart_tx_done);
-            #20;
-            pc_uart_tx_data = program[i][31:24];
-            pc_uart_tx_start = 1;
-            #20;
-            pc_uart_tx_start = 0;
-            wait(pc_uart_tx_done);
-            #20;
-        end
-
-        // Cambiar el modo del debugger a continuo
-        pc_uart_tx_data = 8'h08;
-        pc_uart_tx_start = 1;
-        #20;
-        pc_uart_tx_start = 0;
-        wait(pc_uart_tx_done);
-        #20;
-
-        // Esperar un tiempo para que el programa se ejecute en modo continuo
-        #1200;
-
-        // Resetear el sistema y cambiar el modo del debugger a paso a paso
-        rst = 1;
-        #50;
-        rst = 0;
-        pc_uart_tx_data = 8'h09;
-        pc_uart_tx_start = 1;
-        #20;
-        pc_uart_tx_start = 0;
-        wait(pc_uart_tx_done);
-        #20;
-
-        // Simular el avance paso a paso
-        for (i = 0; i < 10; i = i + 1) begin
-            pc_uart_tx_data = 8'h0A;
-            pc_uart_tx_start = 1;
-            #20;
-            pc_uart_tx_start = 0;
-            wait(pc_uart_tx_done);
-            #20;
-        end
-
-        // Finalizar la simulación
-        #1200;
-        $finish;
-    end
-
+    // Instantiate the MIPS module
     mips #(
-        .SIZE(32),
-        .SIZE_OP(6),
-        .CONTROL_SIZE(18),
-        .IF_ID_SIZE(32),
-        .ID_EX_SIZE(129),
-        .EX_MEM_SIZE(77),
-        .MEM_WB_SIZE(71),
-        .ADDR_WIDTH(32),
-        .MAX_INSTRUCTION(64),
-        .MEM_SIZE(64)
-    ) 
-    uut(
-        .i_clk(clk),
-        .i_rst(rst),
-        .i_stall(i_stall),
-        .i_uart_rx(uart_rx),
-        .o_uart_tx(uart_tx),
-        .rx_done_tick(rx_done_tick), // Conectar señal de tick de recepción
-        .tx_done_tick(tx_done_tick)  // Conectar señal de tick de transmisión
+        .SIZE(SIZE),
+        .SIZE_OP(SIZE_OP),
+        .CONTROL_SIZE(CONTROL_SIZE),
+        .IF_ID_SIZE(IF_ID_SIZE),
+        .ID_EX_SIZE(ID_EX_SIZE),
+        .EX_MEM_SIZE(EX_MEM_SIZE),
+        .MEM_WB_SIZE(MEM_WB_SIZE),
+        .ADDR_WIDTH(ADDR_WIDTH),
+        .MAX_INSTRUCTION(MAX_INSTRUCTION),
+        .NUM_REGISTERS(NUM_REGISTERS),
+        .MEM_SIZE(MEM_SIZE)
+    ) uut (
+        .i_rst(i_rst),
+        .i_stall(1'b0),
+        .i_uart_rx(i_uart_rx),
+        .o_uart_tx(o_uart_tx),
+        .i_clk(i_clk),
+        .rx_done_tick(uart_rx_done),
+        .tx_done_tick(uart_tx_start)
     );
 
-    uart #(
-        .DATA_LEN(8),
-        .SB_TICK(16),
-        .COUNTER_MOD(651),
-        .COUNTER_BITS(10),
-        .PTR_LEN(4)
-    ) uart_inst (
-        .i_clk(clk),
-        .i_reset(rst),
-        .i_readUart(pc_uart_tx_start),
-        .i_writeUart(pc_uart_tx_start),
-        .i_uartRx(uart_rx),
-        .i_dataToWrite(pc_uart_tx_data),
-        .o_txFull(),
-        .o_rxEmpty(),
-        .o_uartTx(uart_tx),
-        .o_dataToRead(pc_uart_rx_data)
+    // Instantiate the second UART module (PC simulation)
+    wire tick;
+    baudrate_generator #(
+        .COUNT(326)
+    ) baud_gen (
+        .clk(i_clk),
+        .reset(i_rst),
+        .tick(tick)
     );
+
+    uart_tx #(
+        .N(8),
+        .COUNT_TICKS(16)
+    ) uart_tx_inst (
+        .clk(i_clk),
+        .reset(i_rst),
+        .tx_start(pc_uart_tx_start_reg),
+        .tick(tick),
+        .data_in(pc_uart_tx_data),
+        .tx_done(pc_uart_tx_full),
+        .tx(pc_uart_tx)
+    );
+
+    uart_rx #(
+        .N(8),
+        .COUNT_TICKS(16)
+    ) uart_rx_inst (
+        .clk(i_clk),
+        .reset(i_rst),
+        .tick(tick),
+        .rx(pc_uart_rx),
+        .data_out(pc_uart_rx_data),
+        .valid(pc_uart_rx_done),
+        .state_leds(),
+        .started()
+    );
+
+    // Connect the UART modules
+    assign i_uart_rx = pc_uart_tx;
+    assign pc_uart_rx = o_uart_tx;
+
+    // Clock generation
+    always #5 i_clk = ~i_clk;
+
+    // Testbench procedure
+    initial begin
+        // Initialize signals
+        i_clk = 0;
+        i_rst = 1;
+        pc_uart_tx_start_reg = 0;
+        pc_uart_rx_done_reg = 0;
+
+        // Reset the system
+        #10 i_rst = 0;
+
+        // Set continuous mode
+        send_uart_command(8'h08); // Command to set continuous mode
+
+        // Load a short test program
+        send_uart_command(8'h02); // Command to start loading program
+        send_uart_data(32'b00111100000000010000000000000011); // R1 = 3
+        send_uart_data(32'b00111100000000100000000000000001); // R2 = 1
+        send_uart_data(32'b00000000001000100001100000100001); // R3 = R1 + R2
+        send_uart_command(8'h0C); // Command to end loading program
+
+        // Set step-by-step mode
+        send_uart_command(8'h09); // Command to set step-by-step mode
+
+        send_uart_command(8'h0D); // Command to start program
+
+        // Request registers and latches
+        send_uart_command(8'h03); // Command to request registers
+        send_uart_command(8'h04); // Command to request IF/ID latch
+        send_uart_command(8'h05); // Command to request ID/EX latch
+        send_uart_command(8'h06); // Command to request EX/MEM latch
+        send_uart_command(8'h07); // Command to request MEM/WB latch
+
+        // Advance one step
+        send_uart_command(8'h0A); // Command to advance one step
+
+        // Request registers and latches again
+        send_uart_command(8'h03); // Command to request registers
+        send_uart_command(8'h04); // Command to request IF/ID latch
+        send_uart_command(8'h05); // Command to request ID/EX latch
+        send_uart_command(8'h06); // Command to request EX/MEM latch
+        send_uart_command(8'h07); // Command to request MEM/WB latch
+
+        // Repeat until the end of the program
+        repeat (3) begin
+            send_uart_command(8'h0A); // Command to advance one step
+            send_uart_command(8'h03); // Command to request registers
+            send_uart_command(8'h04); // Command to request IF/ID latch
+            send_uart_command(8'h05); // Command to request ID/EX latch
+            send_uart_command(8'h06); // Command to request EX/MEM latch
+            send_uart_command(8'h07); // Command to request MEM/WB latch
+        end
+
+        // Finish simulation
+        #10000 $finish;
+    end
+
+    // Task to send UART command
+    task send_uart_command(input [7:0] command);
+        begin
+            @(negedge i_clk);
+            pc_uart_tx_data = command;
+            pc_uart_tx_start_reg = 1;
+            @(negedge pc_uart_tx_full);
+            pc_uart_tx_start_reg = 0;
+        end
+    endtask
+
+    // Task to send UART data
+    task send_uart_data(input [31:0] data);
+        integer i;
+        begin
+            for (i = 0; i < 4; i = i + 1) begin
+                send_uart_command(data[8*i +: 8]);
+            end
+        end
+    endtask
+
+    // Control the read signal for the PC UART
+    always @(posedge i_clk or posedge i_rst) begin
+        if (i_rst) begin
+            pc_uart_rx_done_reg <= 0;
+        end else begin
+            if (!pc_uart_rx_empty) begin
+                pc_uart_rx_done_reg <= 1;
+            end else begin
+                pc_uart_rx_done_reg <= 0;
+            end
+        end
+    end
+
+    assign pc_uart_tx_start = pc_uart_tx_start_reg;
 
 endmodule

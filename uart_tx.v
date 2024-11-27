@@ -1,128 +1,117 @@
-module uartTX#
-(
-    parameter DATA_LEN = 8,
-    parameter SB_TICK = 16
-)
-(
-    input wire i_clk,
-    input wire i_reset,
-    input wire i_txStart,
-    input wire i_tick,
-    input wire [DATA_LEN-1 : 0] i_txDataIn,
-    output reg o_txDone,
-    output wire o_uartTx
-);
+//Listing 8.3
+module uart_tx
+   #(
+     parameter N = 8,     
+    parameter COUNT_TICKS = 16 
+   )
+   (
+    input wire clk,
+    input wire reset,
+    input wire tx_start, 
+    input wire tick,
+    input wire [N-1:0] data_in,
+    output reg tx_done,
+    output wire tx
+   );
 
-//symbolic state declaration
-localparam [1:0] IDLE = 2'b00;
-localparam [1:0] START = 2'b01;
-localparam [1:0] DATA = 2'b10;
-localparam [1:0] STOP = 2'b11;
+   // symbolic state declaration
+   localparam [1:0]
+      IDLE  = 2'b00,
+      START = 2'b01,
+      DATA  = 2'b10,
+      STOP  = 2'b11;
 
-//signal declaration
-reg [1:0] stateReg;
-reg [1:0] stateNext;
+   // signal declaration
+   reg [1:0] state, next_state;
+   reg [3:0] baud_counter, baud_counter_reg;
+   reg [2:0] bit_counter, bit_counter_reg;
+   reg [7:0] shift_reg, shift_reg_next;
+   reg tx_reg, tx_next;
 
-reg [3:0] ticksReg;
-reg [3:0] ticksNext;
+   // body
+   // FSMD state & data registers
+   always @(posedge clk)
+      if (reset)
+         begin
+            state <= IDLE;
+            baud_counter <= 0;
+            bit_counter <= 0;
+            shift_reg <= 0;
+            tx_reg <= 1'b1;
+         end
+      else
+         begin
+            state <= next_state;
+            baud_counter <= baud_counter_reg;
+            bit_counter <= bit_counter_reg;
+            shift_reg <= shift_reg_next;
+            tx_reg <= tx_next;
+         end
 
-reg [2:0] sendBitsReg;
-reg [2:0] sendBitsNext;
-
-reg [DATA_LEN-1:0] sendByteReg;
-reg [DATA_LEN-1:0] sendByteNext;
-
-reg txReg;
-reg txNext;
-
-//Finite State Machine with Data (state and DATA registers)
-always @(posedge i_clk) begin
-    if(i_reset) begin
-        stateReg <= IDLE;
-        ticksReg <= 0;
-        sendBitsReg <= 0;
-        sendByteReg <= 0;
-        txReg <= 1'b1;
-    end
-    else begin
-        stateReg <= stateNext;
-        ticksReg <= ticksNext;
-        sendBitsReg <= sendBitsNext;
-        sendByteReg <= sendByteNext;
-        txReg <= txNext;
-    end
-end
-
-//Finite State Machine with Data (next state logic and functional units)
-always @(*) begin
-    stateNext = stateReg;
-    o_txDone = 1'b0;
-    ticksNext = ticksReg;
-    sendBitsNext = sendBitsReg;
-    sendByteNext = sendByteReg;
-    txNext = txReg;
-
-    case (stateReg)
-        IDLE: begin
-            txNext = 1'b1;
-            if(i_txStart) begin
-                stateNext = START;
-                ticksNext = 0;
-                sendByteNext = i_txDataIn;
+   // FSMD next-state logic & functional units
+   always @*
+   begin
+      next_state = state;
+      tx_done = 1'b0;
+      baud_counter_reg = baud_counter;
+      bit_counter_reg = bit_counter;
+      shift_reg_next = shift_reg;
+      tx_next = tx_reg ;
+      case (state)
+         IDLE:
+            begin
+               tx_next = 1'b1;
+               if (tx_start)
+                  begin
+                     next_state = START;
+                     baud_counter_reg = 0;
+                     shift_reg_next = data_in;
+                  end
             end
-        end
-        
-        START: begin
-            txNext = 1'b0;
-            if (i_tick) begin
-                if (ticksReg == 15) begin
-                    stateNext = DATA;
-                    ticksNext = 0;
-                    sendBitsNext = 0;
-                end
-                else begin
-                    ticksNext = ticksReg + 1;
-                end
+         START:
+            begin
+               tx_next = 1'b0;
+               if (tick)
+                  if (baud_counter==(COUNT_TICKS-1))
+                     begin
+                        next_state = DATA;
+                        baud_counter_reg = 0;
+                        bit_counter_reg = 0;
+                     end
+                  else
+                     baud_counter_reg = baud_counter + 1;
             end
-        end
-
-        DATA: begin
-            txNext = sendByteReg[0];
-            if (i_tick) begin
-                if(ticksReg==15) begin
-                    ticksNext = 0;
-                    sendByteNext = sendByteReg >> 1;
-                    if (sendBitsReg==(DATA_LEN-1)) begin
-                        stateNext = STOP;
-                    end
-                    else begin
-                        sendBitsNext = sendBitsReg + 1;
-                    end
-                end
-                else begin
-                    ticksNext = ticksReg + 1;
-                end
+         DATA:
+            begin
+               tx_next = shift_reg[0];
+               if (tick)
+                  if (baud_counter==(COUNT_TICKS-1))
+                     begin
+                        baud_counter_reg = 0;
+                        shift_reg_next = shift_reg >> 1;
+                        if (bit_counter==(N-1))
+                           next_state = STOP ;
+                        else
+                           bit_counter_reg = bit_counter + 1;
+                     end
+                  else
+                     baud_counter_reg = baud_counter + 1;
             end
-        end
-
-        STOP: begin
-            txNext = 1'b1;
-            if (i_tick) begin
-                if (ticksReg==(SB_TICK-1)) begin
-                    stateNext = IDLE;
-                    o_txDone = 1'b1;
-                end
-                else begin
-                    ticksNext = ticksReg + 1;
-                end
+         STOP:
+            begin
+               tx_next = 1'b1;
+               if (tick)
+                  if (baud_counter==(COUNT_TICKS-1))
+                     begin
+                        next_state = IDLE;
+                        tx_done = 1'b1;
+                     end
+                  else
+                     baud_counter_reg = baud_counter + 1;
             end
-        end
-        default: begin
-            stateNext = IDLE;
-        end
-    endcase
-end
-
-assign o_uartTx = txReg;
+      endcase
+   end
+   // output
+   assign tx = tx_reg;
 
 endmodule

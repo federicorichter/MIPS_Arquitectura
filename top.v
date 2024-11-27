@@ -73,48 +73,6 @@ module mips #(
     wire [7:0] uart_rx_data, uart_tx_data;
     wire baud_tick;
 
-    // Instancia del generador de baudios
-    baudrate_generator #(
-        .COUNT(651) // Ajustar según la frecuencia de reloj y la tasa de baudios
-    ) baud_gen (
-        .clk(i_clk),
-        .reset(i_rst),
-        .tick(baud_tick)
-    );
-
-    // Instancia del receptor UART
-    uart_rx #(
-        .N(8),
-        .M(1),
-        .PARITY_EN(0),
-        .BAUD_RATE(9600),
-        .CLK_FREQ(100000000),
-        .COUNT_TICKS(16)
-    ) uart_rx_inst (
-        .tick(baud_tick),
-        .reset(i_rst),
-        .clk(i_clk),
-        .rx(i_uart_rx),
-        .data_out(uart_rx_data),
-        .valid(uart_rx_done),
-        .state_leds(),
-        .started()
-    );
-
-    // Instancia del transmisor UART
-    uart_tx #(
-        .N(8),
-        .COUNT_TICKS(16)
-    ) uart_tx_inst (
-        .clk(i_clk),
-        .reset(i_rst),
-        .tx_start(uart_tx_start),
-        .tick(baud_tick),
-        .data_in(uart_tx_data),
-        .tx_done(tx_done_tick),
-        .tx(o_uart_tx)
-    );
-
     debugger #(
         .SIZE(SIZE),
         .NUM_REGISTERS(32),

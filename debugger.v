@@ -21,7 +21,7 @@ module debugger #(
     input wire [MEM_WB_SIZE-1:0] i_MEM_WB,
     input wire [SIZE-1:0] i_debug_data, // Datos de depuración de la memoria de datos
     output reg o_mode, // Modo de depuración: 0 = continuo, 1 = paso a paso
-    output reg o_debug_clk,
+    output wire o_debug_clk,
     output reg [ADDR_WIDTH-1:0] o_debug_addr, // Dirección de depuración
     output reg [ADDR_WIDTH-1:0] o_write_addr, // Dirección de escritura
     output reg o_inst_write_enable,
@@ -49,6 +49,7 @@ module debugger #(
     localparam SEND_MEMORY = 6;
     localparam LOAD_PROGRAM = 7;
     localparam STEP_CLOCK = 8;
+    localparam WAIT_STEP = 9;
 
     reg [3:0] state, next_state;
     integer i;
@@ -103,6 +104,7 @@ module debugger #(
         next_state = state;
         uart_tx_start_reg = 0;
         uart_rx_done_reg = 0;
+        o_mode = 0;
         case (state)
             IDLE: begin
                 if (uart_rx_done) begin
@@ -205,16 +207,31 @@ module debugger #(
                 end
                 next_state = IDLE;
             end
+            WAIT_STEP: begin
+                if (!uart_rx_empty && uart_rx_data == 8'h0A) begin
+                    next_state = STEP_CLOCK;
+                end
+            end
             STEP_CLOCK: begin
-                // Advance one clock cycle
-                o_debug_clk = 1;
-                @(posedge i_clk);
-                o_debug_clk = 0;
-                next_state = IDLE;
+                next_state = WAIT_STEP;
             end
             default: next_state = IDLE;
         endcase
     end
+
+    // Clock generation for step mode and continuous mode
+    reg step_clk;
+    always @(posedge i_clk or posedge i_reset) begin
+        if (i_reset) begin
+            step_clk <= 0;
+        end else if (state == STEP_CLOCK) begin
+            step_clk <= 1;
+        end else begin
+            step_clk <= 0;
+        end
+    end
+
+    assign o_debug_clk = (o_mode) ? step_clk : i_clk;
 
     assign uart_tx_start = uart_tx_start_reg;
     assign uart_tx_data = uart_tx_data_reg;

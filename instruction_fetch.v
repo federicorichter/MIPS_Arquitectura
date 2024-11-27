@@ -25,23 +25,6 @@ module instruction_fetch #(
 
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
 
-    initial begin
-        instruction_mem[0] = 32'b00111100000000010000000000000011; // R1 = 3
-        instruction_mem[1] = 32'b00111100000000100000000000000001; // R2 = 1
-        instruction_mem[2] = 32'b00111100000000110000000000001001; // R3 = 9
-        instruction_mem[3] = 32'b00111100000001000000000000000111; // R4 = 7
-        instruction_mem[4] = 32'b00111100000001010000000000000011; // R5 = 3
-        instruction_mem[5] = 32'b00111100000001100000000001100101; // R6 = 101
-        instruction_mem[6] = 32'b00111100000001110000000000011001; // R7 = 25 
-        instruction_mem[7] = 32'b00000000001000100001100000100011; // R3 = R1 - R2 -> 2
-        instruction_mem[8] = 32'b00000000011001000010100000100001; // R5 = R3 + R4 -> 9
-        instruction_mem[9] = 32'b00000000011001100011100000100001; // R7 = R3 + R6 -> 103
-        instruction_mem[10] = 32'b00000000011001000010100000100001; // R15 = R3 + R5
-        instruction_mem[11] = 32'b0; // R1 = 3
-        instruction_mem[12] = 32'b00111100000000010000000000000011; // R1 = 3
-        instruction_mem[13] = 32'b00111100000000010000000000000011; // R1 = 3
-        instruction_mem[14] = 32'b00111100000000010000000000000011; // R1 = 3
-    end
 
     adder #(
         .SIZE(SIZE)

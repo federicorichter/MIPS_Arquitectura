@@ -55,7 +55,15 @@ module mips #(
     wire [SIZE-1:0] reg_a_conditional, reg_b_conditional;
     wire reg_equal_conditional;
     wire res_branch;
-    wire pc_plus_immediate;
+    wire pc_plus_immediate_sel;
+    wire [SIZE-1:0] pc_if;
+    wire [SIZE-1:0] o_mux_pc_immed;
+    wire [SIZE-1:0] pc_plus;
+    wire [25:0] o_jmp_direc;
+    wire [SIZE-1:0] o_mux_dir;
+    wire [SIZE-1:0] pc_value;
+    wire [SIZE-1:0] immediate_plus_pc;
+    wire if_flush;
 
     hazard_detection #(
         .SIZE_REG_DIR(5),
@@ -66,9 +74,18 @@ module mips #(
         .i_rt_id_ex(id_to_ex[27:23]),
         .i_mem_read_id_ex(id_to_ex[14]),
         .i_jump_brch(id_to_ex[0]),
-        .i_branch(pc_plus_immediate),
+        .i_branch(pc_plus_immediate_sel),
         .o_flush(if_flush),
         .o_hazard(hazard_output)
+    );
+
+    adder #(
+        .SIZE(SIZE)
+    )
+    adder_pc(
+        .i_a(pc_value),
+        .i_b(1),
+        .o_result(pc_plus_4)
     );
 
     instruction_fetch #(
@@ -78,9 +95,11 @@ module mips #(
         .rst(rst),
         .i_stall((i_stall || hazard_output)),
         //.i_instruction_jump(), //bit control jump
+        .i_pc(pc_if),
         .i_mux_selec(pc_source), // selector del mux
         .o_instruction(instruction), // salida:instruccion
-        .o_adder(instruction_plus4)
+        .o_adder(instruction_plus4),
+        .o_pc(pc_value)
     );
 
     latch #(
@@ -88,13 +107,29 @@ module mips #(
     )
     IF_ID (
         .clk(clk),
+        .rst(rst || if_flush ),
+        .i_enable(~i_stall && ~hazard_output),
+        .i_data({
+            //pc_plus,//PC + 4
+            instruction //PC
+         
+        }),
+        .o_data(if_to_id[31:0])
+    );
+
+    latch #(
+        .BUS_DATA(32)
+    )
+    IF_ID2 (
+        .clk(clk),
         .rst(rst),
         .i_enable(~i_stall && ~hazard_output),
         .i_data({
-            instruction
-            //instruction_plus4
+            pc_plus_4//PC + 4
+            //instruction //PC
+         
         }),
-        .o_data(if_to_id)
+        .o_data(if_to_id[63:32])
     );
     
     general_control #(
@@ -107,6 +142,26 @@ module mips #(
         .o_control(control_signals)
     );
 
+    mux #(
+        .BITS_ENABLES(1),
+        .BUS_SIZE(SIZE)
+    )
+    mux_jmp_brch(
+        .i_en(control_signals[JUMP_OR_B]), //0 in branchs, 1 in Jumps
+        .i_data({o_mux_dir, o_mux_pc_immed}),
+        .o_data(pc_if)
+    );
+
+    mux #(
+        .BITS_ENABLES(1),
+        .BUS_SIZE(SIZE)
+    )
+    mux_dir(
+        .i_en(control_signals[JUMP_SRC]),
+        .i_data({{6'b0,o_jmp_direc} << 2 , reg_a_conditional}), 
+        .o_data(o_mux_dir)
+    );
+
     assign reg_equal_conditional = reg_a_conditional == reg_b_conditional;
 
     mux #(
@@ -114,7 +169,7 @@ module mips #(
         .BUS_SIZE(1)
     )
     mux_eq_neq(
-        .i_en(control_signals[EQ_OR_NEQ]),
+        .i_en(control_signals[EQorNE]),
         .i_data({reg_equal_conditional, ~reg_equal_conditional}),
         .o_data(res_branch)
     );
@@ -124,13 +179,19 @@ module mips #(
         .BUS_SIZE(SIZE)
     )
     mux_pc_immediate(
-        .i_en(pc_plus_immediate),
-        .i_data({immediate_suma_result, pc_suma_result}),
-        .o_data(o_mux_pc_immediate)
+        .i_en(pc_plus_immediate_sel),
+        .i_data({immediate_plus_pc, pc_plus_4}),
+        .o_data(o_mux_pc_immed)
     );
-    assign pc_plus_immediate = res_branch && control_signals[BRANCH];
+    assign pc_plus_immediate_sel = res_branch && control_signals[BRANCH];
 
-    
+    adder #(
+        .SIZE(SIZE)
+    ) adder_pc_immediate(
+        .i_a(if_to_id[63:32]),
+        .i_b(immediate),
+        .o_result(immediate_plus_pc)
+    );
 
 
     instruction_decode #(
@@ -143,6 +204,8 @@ module mips #(
         .i_instruction(if_to_id[31:0]),
         .rst(rst),
         .clk(clk),
+        .i_pc_if(if_to_id[63:32]),
+        .i_jump_brch(control_signals[JUMP_OR_B]),
         .i_write_enable(mem_to_wb[1]),
         .i_w_dir(mem_to_wb[6:2]),
         .i_w_data(data_write_reg),
@@ -165,6 +228,7 @@ module mips #(
         .o_reg_B(reg_b),
         .o_op(operand),
         .o_immediate(immediate),
+        .o_jmp_direc(o_jmp_direc),
         .o_dir_rs(rs_dir),
         .o_dir_rt(rt_dir),
         .o_dir_rd(rd_dir)

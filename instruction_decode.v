@@ -9,6 +9,9 @@ module instruction_decode #(
     input wire rst,
     input wire clk,
     input wire [SIZE-1:0]i_instruction,
+
+    input wire [SIZE-1:0] i_pc_if,
+    input wire i_jump_brch,
     
     input wire [SIZE_REG_DIR-1:0] i_w_dir,
     input wire [SIZE-1:0] i_w_data,
@@ -39,6 +42,8 @@ module instruction_decode #(
 
     output wire [SIZE-1:0] o_immediate,
 
+    output wire [25:0] o_jmp_direc,
+
     output wire [SIZE_REG_DIR-1:0] o_dir_rs,
     output wire [SIZE_REG_DIR-1:0] o_dir_rt,
     output wire [SIZE_REG_DIR-1:0] o_dir_rd
@@ -47,7 +52,8 @@ module instruction_decode #(
 );
     reg[SIZE-1:0] reg_jump;
     wire [1:0] i_mux_A, i_mux_B;
-    wire [SIZE-1:0] reg_a, reg_b;
+    wire [SIZE-1:0] reg_a, reg_b, reg_a_value;
+
 
     forwarding_unit #(
         .TAM_BITS_FORWARD(2),
@@ -66,12 +72,21 @@ module instruction_decode #(
     );
 
     mux #(
+        .BITS_ENABLES(1),
+        .BUS_SIZE(SIZE)
+    )mux_de_dato_o_pc(
+        i_jump_brch,
+        {i_pc_if,reg_a_value},
+        o_reg_A
+    );
+
+    mux #(
         .BITS_ENABLES(2),
         .BUS_SIZE(SIZE)
     ) mux_A(
         .i_en(i_mux_A),
         .i_data({i_data_id_ex,i_data_mem_wb,i_data_ex_mem,reg_a}),
-        .o_data(o_reg_A)
+        .o_data(reg_a_value)
     );
 
     mux #(
@@ -110,6 +125,7 @@ module instruction_decode #(
     assign o_dir_rt =   i_instruction[20:16]; 
     assign o_reg_A_branch = reg_a;
     assign o_reg_B_branch = reg_b;
+    assign o_jmp_direc = i_instruction[25:0];
 
 
 endmodule

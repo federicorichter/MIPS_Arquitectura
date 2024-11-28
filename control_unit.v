@@ -68,8 +68,8 @@ module general_control #(
             12'b001111??????: control_reg = 18'b000000011000000101; // LUI (load upper immediate)
             12'b001010??????: control_reg = 18'b000000101000000001; // SLTI (set less than immediate)
             12'b001011??????: control_reg = 18'b000000101000000101; // SLTIU (set less than immediate unsigned)
-            12'b000100??????: control_reg = 18'b101000000000000010; // BEQ (branch on equal)
-            12'b000101??????: control_reg = 18'b101000000000000010; // BNE (branch on not equal)
+            12'b000100??????: control_reg = 18'b001000000000000010; // BEQ (branch on equal)
+            12'b000101??????: control_reg = 18'b001000000000000000; // BNE (branch on not equal)
 
             // J-Type Instructions
             12'b000010??????: control_reg = 18'b110000000000000000; // J (jump)

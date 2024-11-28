@@ -1,12 +1,13 @@
 module instruction_fetch #(
     parameter SIZE = 32,
-    parameter MAX_INSTRUCTION = 13
+    parameter MAX_INSTRUCTION = 10
 )
 (
     input wire clk,
     input wire rst,
     input wire i_stall,
     input wire [SIZE-1:0]i_instruction_jump, //bit control jump
+    input [SIZE-1:0] i_pc,
     input wire i_mux_selec, // selector del mux
     output wire [SIZE-1:0]o_instruction, // salida:instruccion
     output wire [SIZE-1:0] o_pc,
@@ -22,7 +23,7 @@ module instruction_fetch #(
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
 
     initial begin
-        instruction_mem[0] = 32'b00111100000000010000000000000001; // LUI R1, 1
+        /*instruction_mem[0] = 32'b00111100000000010000000000000001; // LUI R1, 1
         instruction_mem[1] = 32'b00111100000000110000000000000011; // LUI R3, 3
         instruction_mem[2] = 32'b00111100000010110000000000000001; // NOP 
         instruction_mem[3] = 32'b00111100000010110000000000000001; // NOP
@@ -31,9 +32,9 @@ module instruction_fetch #(
         instruction_mem[6] = 32'b00111100000010110000000000000001; // NOP
         instruction_mem[7] = 32'b10000100001001010000000000000001; // LH, R5 <- MEM[1]
         instruction_mem[8] = 32'b00000000101000110011100000100001; // R7 = R5 + R3 
-        instruction_mem[9] = 32'b00111100000010110000000000000001; // NOP
+        instruction_mem[9] = 32'b00111100000010110000000000000011; // NOP
         instruction_mem[10] = 32'b00111100000010110000000000000001; // NOP
-        instruction_mem[11] = 32'b00111100000010110000000000000001; // NOP
+        instruction_mem[11] = 32'b00111100000010110000000000000001; // NOP*/
 
         /*instruction_mem[0] = 32'b00111100000000010000000000000011; // R1 = 3
         instruction_mem[1] = 32'b00111100000000100000000000000001; // R2 = 1
@@ -51,8 +52,17 @@ module instruction_fetch #(
         instruction_mem[13] = 32'b00111100000000010000000000000011; // R1 = 3
         instruction_mem[14] = 32'b00111100000000010000000000000011; // R1 = 3*/
 
-
-    end
+        instruction_mem[0] = 32'b00111100000000010000000000000011; // LUI R1, 3
+        instruction_mem[1] = 32'b00111100000000110000000000000011; // LUI R3, 3
+        instruction_mem[2] = 32'b00111100000001000000000000001001; // R4 = 9
+        instruction_mem[3] = 32'b00010100001000110000000000000001; // BEQ R1, R3, 1
+        instruction_mem[4] = 32'b00111100000001110000000000011011; // R7 = 27
+        instruction_mem[5] = 32'b00111100000001110000000000011001; // R7 = 25
+        instruction_mem[6] = 32'b00111100000001110000000000011001; // R7 = 25
+        instruction_mem[7] = 32'b00111100000001110000000000011001; // R7 = 25
+        instruction_mem[8] = 32'b00111100000001110000000000011001; // R7 = 25
+        instruction_mem[9] = 32'b00111100000001110000000000010001; // R7 = 17
+    end 
 
     adder#(
         .SIZE(SIZE)
@@ -77,8 +87,8 @@ module instruction_fetch #(
             pc <= 32'b0;
         else
         if(!i_stall) begin
-            if(pc_next < MAX_INSTRUCTION -1) begin
-                pc <= pc_next;
+            if(pc_next < MAX_INSTRUCTION ) begin
+                pc <= i_pc;
             end
             else begin
                 pc <= 0;

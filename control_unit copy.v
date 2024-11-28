@@ -608,7 +608,7 @@ module general_control #(
             // J_RET_DST = 0 (not a jump/return instruction)
             // EQorNE = 1 (branch on equal)
             // JUMP_SRC = 0 (not a jump instruction)
-            // JUMP_OR_B = 1 (branch instruction)
+            // JUMP_OR_B = 0 (branch instruction)
 
             12'b000101??????: control_reg = 18'b010000000000000000; // BNE
             // REG_WRITE = 0 (not writing to register)
@@ -624,9 +624,9 @@ module general_control #(
             // ALU_OP = 000 
             // MEM_2_REG = 0 (not writing memory to register)
             // J_RET_DST = 0 (not a jump/return instruction)
-            // EQorNE = 1 (branch on equal)
+            // EQorNE = 0 (branch on equal)
             // JUMP_SRC = 0 (not a jump instruction)
-            // JUMP_OR_B = 1 (branch instruction)
+            // JUMP_OR_B = 0 (branch instruction)
             
             // J-type instructions
             12'b000010??????: control_reg = 18'b000000000000000100; // J

@@ -13,15 +13,16 @@ module register_bank #(
     input wire [SIZE_REG_DIR-1:0]i_w_dir, //dir write register
     input wire [SIZE-1:0]i_w_data,        //data to write in register
 
-
     output wire [SIZE-1:0]o_reg_A,
-    output wire [SIZE-1:0]o_reg_B
+    output wire [SIZE-1:0]o_reg_B,
+    output wire [SIZE*NUM_REGISTERS-1:0] o_registers_debug // Salida de depuración
 );
 
     reg [SIZE-1:0] registers[NUM_REGISTERS-1:0];
+    reg [SIZE*NUM_REGISTERS-1:0] registers_debug;
 
     integer i;
-    reg [SIZE-1:0]reg_A, reg_B;
+    reg [SIZE-1:0] reg_A, reg_B;
 
     always@(posedge clk)begin
         if(rst)begin
@@ -37,9 +38,15 @@ module register_bank #(
     always @(negedge clk)begin
         reg_A <= registers[i_dir_regA];
         reg_B <= registers[i_dir_regB];
+        
+        // Actualizar el arreglo de depuración
+        for (i = 0; i < NUM_REGISTERS; i = i + 1) begin
+            registers_debug[i*SIZE +: SIZE] <= registers[i];
+        end
     end
 
     assign o_reg_A = reg_A;
     assign o_reg_B = reg_B;
+    assign o_registers_debug = registers_debug;
 
 endmodule

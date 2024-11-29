@@ -40,14 +40,18 @@ module mips #(
     localparam JUMP_SRC = 16;
     localparam JUMP_OR_B = 17;
 
-    wire [SIZE-1:0] instruction, instruction_plus4;
+
+
+    wire [SIZE-1:0]instruction, instruction_plus4;
     wire [SIZE-1:0] reg_a;
     wire [SIZE-1:0] reg_b;
     wire [SIZE_OP-1:0] operand;
     wire [SIZE-1:0] immediate;
     wire [4:0] rs_dir, rd_dir, rt_dir;
     wire [CONTROL_SIZE-1:0] control_signals;
-    wire [4:0] reg_address;
+    wire [31:0] if_to_id;
+    wire [128:0] id_to_ex;
+    wire [4:0]reg_address;
     wire [SIZE-1:0] reg_alu_res;
     wire [SIZE-1:0] reg_mem_data;
     wire zero_alu;
@@ -106,6 +110,20 @@ module mips #(
         .uart_rx_empty(uart_rx_empty)
     );
     
+    wire hazard_output;
+
+    hazard_detection #(
+        .SIZE_REG_DIR(5),
+        .SIZE(SIZE)
+    ) hazard_detection_unit(
+        .i_rs_if_id(rs_dir),
+        .i_rt_if_id(rt_dir),
+        .i_rt_id_ex(id_to_ex[27:23]),
+        .i_mem_read_id_ex(id_to_ex[14]),
+        .i_jump_brch(id_to_ex[0]),
+        .o_hazard(hazard_output)
+    );
+  
     instruction_fetch #(
         .SIZE(32)
     ) IF (
@@ -142,6 +160,7 @@ module mips #(
     )
     control_unit(
         .i_func(if_to_id[5:0]),
+        .i_enable(~hazard_output),
         .i_opcode(operand),
         .o_control(control_signals)
     );
@@ -157,7 +176,7 @@ module mips #(
         .rst(i_rst),
         .clk(clk_to_use),
         .i_write_enable(mem_to_wb[1]),
-        .i_w_dir(address_write_reg),
+        .i_w_dir(mem_to_wb[6:2]),
         .i_w_data(data_write_reg),
         .i_rd_id_ex(reg_address),
         .i_rd_ex_mem(ex_to_mem[4:0]),
@@ -214,7 +233,7 @@ module mips #(
         .OP_SIZE(6),
         .ALU_OP_SIZE(3)
     ) EX (
-        .clk(clk_to_use),
+        .clk(clk),
         .i_is_unsigned(id_to_ex[15]),
         .i_shift_mux_a(id_to_ex[9]),
         .i_src_alu_b(id_to_ex[8]),

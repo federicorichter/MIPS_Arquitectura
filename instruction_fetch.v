@@ -55,6 +55,9 @@ module instruction_fetch #(
                 pc <= 0;
             end
         end
+        else begin
+            pc <= pc;
+        end
     end
 
     always @(posedge i_clk) begin

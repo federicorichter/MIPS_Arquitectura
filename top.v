@@ -1,7 +1,8 @@
 module mips #(
     parameter SIZE = 32,
     parameter SIZE_OP = 6,
-    parameter CONTROL_SIZE = 18
+    parameter CONTROL_SIZE = 18,
+    parameter SIZE_REG_DIR = 5
 )(
     input wire clk,
     input wire rst,
@@ -27,7 +28,7 @@ module mips #(
     localparam J_RET_DST = 14;
     localparam EQorNE = 15;
     localparam JUMP_SRC = 16;
-    localparam JUMP_OR_B = 17;
+    localparam JUMP_B = 17;
 
 
 
@@ -44,10 +45,10 @@ module mips #(
     wire [SIZE-1:0] reg_alu_res;
     wire [SIZE-1:0] reg_mem_data;
     wire zero_alu;
-    wire [76:0] ex_to_mem;
+    wire [77:0] ex_to_mem;
     wire [SIZE-1:0] mem_data;
     wire pc_source;
-    wire [70:0] mem_to_wb;
+    wire [71:0] mem_to_wb;
     wire [SIZE-1:0] data_write_reg;
     wire [4:0] address_write_reg;
     wire [1:0] mux_a_ex, mux_b_ex;
@@ -64,6 +65,7 @@ module mips #(
     wire [SIZE-1:0] pc_value;
     wire [SIZE-1:0] immediate_plus_pc;
     wire if_flush;
+    wire [SIZE-1:0] pc_plus_4;
 
     hazard_detection #(
         .SIZE_REG_DIR(5),
@@ -147,7 +149,7 @@ module mips #(
         .BUS_SIZE(SIZE)
     )
     mux_jmp_brch(
-        .i_en(control_signals[JUMP_OR_B]), //0 in branchs, 1 in Jumps
+        .i_en(control_signals[JUMP_B]), //0 in branchs, 1 in Jumps
         .i_data({o_mux_dir, o_mux_pc_immed}),
         .o_data(pc_if)
     );
@@ -158,7 +160,7 @@ module mips #(
     )
     mux_dir(
         .i_en(control_signals[JUMP_SRC]),
-        .i_data({{6'b0,o_jmp_direc} << 2 , reg_a_conditional}), 
+        .i_data({{5'b0,o_jmp_direc} << 2 , reg_a_conditional}), 
         .o_data(o_mux_dir)
     );
 
@@ -205,13 +207,13 @@ module mips #(
         .rst(rst),
         .clk(clk),
         .i_pc_if(if_to_id[63:32]),
-        .i_jump_brch(control_signals[JUMP_OR_B]),
+        .i_jump_brch(control_signals[JUMP_B]),
         .i_write_enable(mem_to_wb[1]),
-        .i_w_dir(mem_to_wb[6:2]),
+        .i_w_dir(address_write_reg),
         .i_w_data(data_write_reg),
         .i_rd_id_ex(reg_address),
         .i_rd_ex_mem(ex_to_mem[4:0]),
-        .i_rd_mem_wb(mem_to_wb[6:2]),
+        .i_rd_mem_wb(address_write_reg),
         .i_reg_wr_id_ex(id_to_ex[17]),
         .i_data_id_ex(reg_alu_res),
         .i_data_ex_mem(mem_data),
@@ -256,7 +258,7 @@ module mips #(
             control_signals[ALU_OP2], control_signals[ALU_OP1],
             control_signals[ALU_OP0], control_signals[MEM_2_REG],
             control_signals[J_RET_DST], control_signals[EQorNE],
-            control_signals[JUMP_SRC], control_signals[JUMP_OR_B]
+            control_signals[JUMP_SRC], control_signals[JUMP_B]
         }),
         .o_data(id_to_ex)
     );
@@ -288,12 +290,13 @@ module mips #(
     );
 
     latch #(
-        .BUS_DATA(77)
+        .BUS_DATA(78)
     ) EX_MEM (
         .clk(clk),
         .rst(rst),
         .i_enable(~i_stall),
         .i_data({
+            id_to_ex[3], // J_RET_DST[77]
             id_to_ex[4], //MEM_TO_REG [76]
             id_to_ex[17], //REG_WRITE [75]
             id_to_ex[12], //MASK_1 [74]
@@ -330,12 +333,13 @@ module mips #(
     );
 
     latch #(
-        .BUS_DATA(71)
+        .BUS_DATA(72)
     ) MEM_WB (
         .clk(clk),
         .rst(rst),
         .i_enable(~i_stall),
         .i_data({
+            ex_to_mem[77], //destiny return address [71]
             ex_to_mem[68:37], // alu result [70:39]
             mem_data, // data read from memory [38:7]
             ex_to_mem[4:0], //reg destiny [6:2]
@@ -353,6 +357,16 @@ module mips #(
         .i_res_alu(mem_to_wb[70:39]),
         .o_data_wb(data_write_reg)
     );
-    assign address_write_reg = (ex_to_mem[75] == 1 ? mem_to_wb[6:2] : 5'b0 );
+
+    mux #(
+        .BITS_ENABLES(1),
+        .BUS_SIZE(SIZE_REG_DIR)
+    ) mux_ret_jump (
+        .i_en(mem_to_wb[71]),
+        .i_data({5'd11111,mem_to_wb[6:2]}),
+        .o_data(address_write_reg)
+    );
+
+    //assign address_write_reg = (ex_to_mem[75] == 1 ? mem_to_wb[6:2] : 5'b0 );
 
 endmodule

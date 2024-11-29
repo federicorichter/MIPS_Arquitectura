@@ -15,6 +15,7 @@ module instruction_fetch #(
     output wire [SIZE-1:0] o_pc,
     output wire [SIZE-1:0] o_adder,
     output wire o_writing_instruction_mem // Señal de control para indicar escritura en memoria de instrucciones
+
 );
     localparam ADDR_WIDTH = $clog2(MAX_INSTRUCTION);
 
@@ -25,13 +26,13 @@ module instruction_fetch #(
 
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
 
-
     adder #(
         .SIZE(SIZE)
     ) adder (
         .i_a(pc),
         .i_b(1),
-        .o_result(adder_output)
+        .o_result(adder_output),
+        .i_stall(i_stall || o_writing_instruction_mem) 
     );
 
     mux #(
@@ -43,7 +44,7 @@ module instruction_fetch #(
         .o_data(pc_next)
     );
 
-    always @(posedge i_clk) begin
+    always @(negedge i_clk) begin
         if (i_rst) 
             pc <= 32'b0;
         else if (!i_stall && !i_inst_write_enable) begin
@@ -55,15 +56,21 @@ module instruction_fetch #(
         end
     end
 
-    always @(negedge i_clk) begin
+    always @(posedge i_clk) begin
+        if (i_rst) begin
+            for (integer i = 0; i < MAX_INSTRUCTION; i = i + 1) begin
+                instruction_mem[i] <= 32'b0;
+            end
+        end
         if (i_inst_write_enable) begin
+            pc <= 0;
             instruction_mem[i_write_addr] <= i_write_data;
         end
     end
 
     assign input_mux = {i_instruction_jump, adder_output};
     assign o_pc = pc;
-    assign o_instruction = instruction_mem[pc];
+    assign o_instruction = (i_inst_write_enable || i_rst) ? 32'b0 : instruction_mem[pc];
     assign o_adder = adder_output;
     assign o_writing_instruction_mem = i_inst_write_enable;
 

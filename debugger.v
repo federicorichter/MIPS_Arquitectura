@@ -26,18 +26,24 @@ module debugger #(
     output reg [ADDR_WIDTH-1:0] o_write_addr, // Dirección de escritura
     output reg o_inst_write_enable,
     output reg [SIZE-1:0] o_write_data, // datos de escritura
-    output wire uart_rx_done,
     output wire uart_tx_start,
     output wire uart_tx_full,
-    output wire uart_rx_empty,
-    output wire [7:0] uart_rx_data,
-    output wire [7:0] uart_tx_data
+    output wire uart_rx_empty
 );
 
     // UART signals
-    reg [7:0] uart_tx_data_reg;
     reg uart_tx_start_reg;
     reg uart_rx_done_reg;
+    reg original_mode; // Para almacenar el modo original antes de la escritura
+    reg [7:0] uart_rx_data_reg;
+    reg [7:0] uart_tx_data_reg;
+    reg [31:0] instruction_buffer; // Buffer para acumular los bytes de la instrucción
+    integer instruction_count; // Cantidad de instrucciones a recibir
+    integer instruction_counter; // Contador de instrucciones recibidas
+    integer byte_counter; // Contador de bytes recibidos
+    wire [7:0] uart_rx_data;
+    wire [7:0] uart_tx_data;
+    wire uart_rx_done; 
 
     // State machine states
     localparam IDLE = 0;
@@ -48,8 +54,10 @@ module debugger #(
     localparam SEND_MEM_WB = 5;
     localparam SEND_MEMORY = 6;
     localparam LOAD_PROGRAM = 7;
-    localparam STEP_CLOCK = 8;
-    localparam WAIT_STEP = 9;
+    localparam WAIT_EXECUTE = 8;
+    localparam STEP_CLOCK = 9;
+    localparam WAIT_STEP = 10;
+    localparam RECEIVE_ADDRESS = 11;
 
     reg [3:0] state, next_state;
     integer i;
@@ -95,44 +103,101 @@ module debugger #(
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             state <= IDLE;
+            uart_rx_done_reg <= 0;
+            byte_counter <= 0;
+            instruction_buffer <= 0;
+            instruction_count <= 0;
+            instruction_counter <= 1;
+            o_write_addr <= 1;
+            o_write_data <= 0;
+            o_inst_write_enable <= 0;
         end else begin
             state <= next_state;
+            if (uart_rx_done) begin
+                uart_rx_data_reg <= uart_rx_data;
+                uart_rx_done_reg <= 1;
+            end else begin
+                uart_rx_done_reg <= 0;
+            end
         end
+    end
+
+    always @(posedge uart_rx_done) begin
+        uart_rx_data_reg <= uart_rx_data;
+        uart_rx_done_reg <= 1;
     end
 
     always @(*) begin
         next_state = state;
         uart_tx_start_reg = 0;
-        uart_rx_done_reg = 0;
-        o_mode = 0;
         case (state)
             IDLE: begin
-                if (uart_rx_done) begin
-                    uart_rx_done_reg = 1;
-                    case (uart_rx_data)
-                        8'h01: next_state = SEND_REGISTERS;
-                        8'h02: next_state = SEND_IF_ID;
-                        8'h03: next_state = SEND_ID_EX;
-                        8'h04: next_state = SEND_EX_MEM;
-                        8'h05: next_state = SEND_MEM_WB;
-                        8'h06: next_state = SEND_MEMORY;
-                        8'h07: next_state = LOAD_PROGRAM;
-                        8'h08: o_mode = 0; // Modo continuo
-                        8'h09: o_mode = 1; // Modo paso a paso
-                        8'h0A: next_state = STEP_CLOCK; // Comando para avanzar un ciclo de reloj
-                        8'h0B: begin // Comando para leer memoria de datos
+                if (uart_rx_done_reg) begin
+                    case (uart_rx_data_reg)
+                        8'h01: begin
+                            next_state = SEND_REGISTERS;
+                            @(negedge uart_rx_done);
+                        end
+                        8'h02: begin
+                            next_state = SEND_IF_ID;
+                            @(negedge uart_rx_done);
+                        end
+                        8'h03: begin
+                            next_state = SEND_ID_EX;
+                            @(negedge uart_rx_done);
+                        end
+                        8'h04: begin
+                            next_state = SEND_EX_MEM;
+                            @(negedge uart_rx_done);
+                        end
+                        8'h05: begin
+                            next_state = SEND_MEM_WB;
+                            @(negedge uart_rx_done);
+                        end
+                        8'h06: begin
                             next_state = SEND_MEMORY;
-                            o_debug_addr = uart_rx_data[ADDR_WIDTH-1:0]; // Actualizar dirección de depuración
+                            @(negedge uart_rx_done);
+                        end
+                        8'h07: begin
+                            original_mode = o_mode; // Guardar el modo original
+                            o_mode = 0; // Cambiar a modo continuo
+                            next_state = LOAD_PROGRAM;
+                            @(negedge uart_rx_done);
+                        end
+                        8'h08: begin
+                            o_mode = 0; // Modo continuo
+                            @(negedge uart_rx_done);
+                        end
+                        8'h09: begin
+                            o_mode = 1; // Modo paso a paso
+                            @(negedge uart_rx_done);
+                        end
+                        8'h0A: begin
+                            next_state = STEP_CLOCK; // Comando para avanzar un ciclo de reloj
+                            @(negedge uart_rx_done);
+                        end
+                        8'h0B: begin
+                            next_state = RECEIVE_ADDRESS; // Comando para leer memoria de datos
+                            @(negedge uart_rx_done);
                         end
                         8'h0C: begin // Comando para finalizar la carga de instrucciones
                             o_inst_write_enable = 0;
                             next_state = IDLE;
+                            @(negedge uart_rx_done);
                         end
                         8'h0D: begin // Comando para iniciar después de la escritura
-                            o_inst_write_enable = 1;
+                            o_inst_write_enable = 0;
                             next_state = IDLE;
+                            @(negedge uart_rx_done);
                         end
-                        default: next_state = IDLE;
+                        8'h0E: begin
+                            next_state = WAIT_EXECUTE; // Comando para esperar ejecución
+                            @(negedge uart_rx_done);
+                        end
+                        default: begin
+                            next_state = IDLE;
+                            @(negedge uart_rx_done);
+                        end
                     endcase
                 end
             end
@@ -198,17 +263,63 @@ module debugger #(
                 next_state = IDLE;
             end
             LOAD_PROGRAM: begin
-                // Load program into instruction memory
-                for (i = 0; i < MEM_SIZE; i = i + 1) begin
-                    @(negedge uart_rx_empty);
-                    o_inst_write_enable = 1;
-                    o_write_addr = i;
-                    o_write_data = {uart_rx_data, uart_rx_data, uart_rx_data, uart_rx_data};
+                if (uart_rx_done_reg) begin
+                    if (byte_counter == 0) begin
+                        instruction_count = uart_rx_data_reg; // Recibir la cantidad de instrucciones
+                        byte_counter = byte_counter + 1;
+                    end else begin
+                        case (byte_counter)
+                            1: instruction_buffer[7:0] = uart_rx_data_reg;
+                            2: instruction_buffer[15:8] = uart_rx_data_reg;
+                            3: instruction_buffer[23:16] = uart_rx_data_reg;
+                            4: instruction_buffer[31:24] = uart_rx_data_reg;
+                            default: instruction_buffer = instruction_buffer;
+                        endcase
+                        byte_counter = byte_counter + 1;
+                        if (byte_counter == 5) begin // Si se han recibido 4 bytes de la instrucción
+                            o_inst_write_enable = 1;
+                            o_write_data = instruction_buffer; // Escribir la instrucción completa
+                            //for(integer i = 0; i < SIZE; i = i + 1) begin
+                            //    instruction_buffer[i] = instruction_buffer[SIZE-i];
+                            //end
+                            byte_counter = 1; // Reiniciar el contador para la siguiente instrucción
+                            if(instruction_counter > 0) begin
+                                o_write_addr = o_write_addr + 1; // Incrementar la dirección de escritura para la siguiente instrucción
+                            end
+                            instruction_counter = instruction_counter + 1;
+                        end
+                        if (instruction_counter == instruction_count+1) begin // Si se han recibido todas las instrucciones
+                            //o_inst_write_enable = 0;
+                            o_mode = original_mode; // Restaurar el modo original
+                            o_write_addr = 0;
+                            next_state = WAIT_EXECUTE;
+                        end else begin
+                            next_state = LOAD_PROGRAM;
+                        end
+                    end
+                    @(negedge uart_rx_done);
                 end
-                next_state = IDLE;
+            end
+            RECEIVE_ADDRESS: begin
+                if (uart_rx_done_reg) begin
+                    o_debug_addr = uart_rx_data_reg[ADDR_WIDTH-1:0]; // Actualizar dirección de depuración
+                    next_state = SEND_MEMORY;
+                    @(negedge uart_rx_done);
+                end
+            end
+            WAIT_EXECUTE: begin
+                if (uart_rx_done_reg) begin
+                    case (uart_rx_data_reg)
+                        8'h08: o_mode = 0; // Modo continuo
+                        8'h09: o_mode = 1; // Modo paso a paso
+                        8'h11: next_state = IDLE; // Comando para comenzar a ejecutar el pipeline
+                        default: next_state = WAIT_EXECUTE;
+                    endcase
+                    @(negedge uart_rx_done);
+                end
             end
             WAIT_STEP: begin
-                if (!uart_rx_empty && uart_rx_data == 8'h0A) begin
+                if (!uart_rx_empty && uart_rx_data_reg == 8'h0A) begin
                     next_state = STEP_CLOCK;
                 end
             end
@@ -234,7 +345,6 @@ module debugger #(
     assign o_debug_clk = (o_mode) ? step_clk : i_clk;
 
     assign uart_tx_start = uart_tx_start_reg;
-    assign uart_tx_data = uart_tx_data_reg;
-    assign uart_rx_done = uart_rx_done_reg;
+    //assign uart_tx_data = uart_tx_data_reg;
 
 endmodule

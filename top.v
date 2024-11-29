@@ -62,6 +62,7 @@ module mips #(
     wire [SIZE-1:0] debug_data; // Datos de depuración de la memoria de datos
     wire i_inst_write_enable;
     wire [ADDR_WIDTH-1:0] i_write_addr;
+    wire [SIZE-1:0] i_write_data;
     wire o_writing_instruction_mem;
     wire [IF_ID_SIZE-1:0] if_to_id;
     wire [ID_EX_SIZE-1:0] id_to_ex; // Declarar como arreglo
@@ -72,6 +73,7 @@ module mips #(
     wire uart_rx_done, uart_tx_start, uart_tx_full, uart_rx_empty;
     wire [7:0] uart_rx_data, uart_tx_data;
     wire baud_tick;
+    wire clk_to_use;
 
     debugger #(
         .SIZE(SIZE),
@@ -93,22 +95,16 @@ module mips #(
         .i_MEM_WB(mem_to_wb),
         .i_debug_data(debug_data),
         .o_mode(o_mode),
-        .o_debug_clk(debug_clk),
+        .o_debug_clk(clk_to_use),
         .o_debug_addr(debug_addr),
         .o_inst_write_enable(i_inst_write_enable),
         .o_write_addr(i_write_addr),
         .o_write_data(i_write_data),
         .i_registers_debug(i_registers_debug),
-        .uart_rx_done(uart_rx_done),
         .uart_tx_start(uart_tx_start),
         .uart_tx_full(uart_tx_full),
-        .uart_rx_empty(uart_rx_empty),
-        .uart_rx_data(uart_rx_data),
-        .uart_tx_data(uart_tx_data)
+        .uart_rx_empty(uart_rx_empty)
     );
-    
-    // Use debug_clk for the rest of the design
-    wire clk_to_use = debug_clk;
     
     instruction_fetch #(
         .SIZE(32)
@@ -156,7 +152,7 @@ module mips #(
         .SIZE_REG_DIR($clog2(NUM_REGISTERS)),
         .SIZE_OP(6)
     ) ID (
-        .i_stall(i_stall),
+        .i_stall(i_stall || o_writing_instruction_mem),
         .i_instruction(if_to_id[31:0]),
         .rst(i_rst),
         .clk(clk_to_use),

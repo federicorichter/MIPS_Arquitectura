@@ -64,6 +64,9 @@ module tb_top;
 
     // Instantiate the second UART module (PC simulation)
     wire tick;
+
+    reg [31:0]regs[31:0];
+    reg done = 0;
     baudrate_generator #(
         .COUNT(326)
     ) baud_gen (
@@ -121,7 +124,7 @@ module tb_top;
 
         // Load a short test program
         send_uart_command(8'h07); // Command to start loading program
-        send_uart_command(8'd12); // Cantidad de instrucciones a cargar
+        send_uart_command(8'd15); // Cantidad de instrucciones a cargar
 
         // Send the instructions
         send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
@@ -135,6 +138,7 @@ module tb_top;
         send_uart_data(32'b00000000011001000010100000100001,32); //R5 = R3 + R4 -> 9
         send_uart_data(32'b00000000011001100011100000100001,32); //R7 = R3 + R6 -> 103
         send_uart_data(32'b00000000011001000010100000100001,32); //R15 = R3 + R5
+        send_uart_data(32'b00111100000011110000000010010100,32); //R15 = 300
         send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
         send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
         send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
@@ -150,10 +154,10 @@ module tb_top;
 
         // Request registers and latches
         //send_uart_command(8'h01); // Command to request registers
+
+        #100000;
 //
-        //#100000;
-//
-        //send_uart_command(8'h02); // Command to request IF/ID latch
+        send_uart_command(8'h02); // Command to request IF/ID latch
 //
         //#100000;
         //send_uart_command(8'h03); // Command to request ID/EX latch
@@ -191,6 +195,19 @@ module tb_top;
         #10000 $finish;
     end
 
+    task receive_registers;
+        integer i;
+        begin
+            for (i = 0; i < 32; i = i + 1) begin
+                @(negedge pc_uart_rx_done);
+                regs[i] = pc_uart_rx_data;
+            end
+            $display("Registers:");
+            for (i = 0; i < 32; i = i + 1) begin
+                $display("R%d: %d", i, regs[i]);
+            end
+        end
+    endtask
     // Task to send UART command
     task send_uart_command(input [7:0] command);
         begin

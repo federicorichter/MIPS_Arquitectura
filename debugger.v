@@ -80,7 +80,7 @@ module debugger #(
         .reset(i_reset),
         .tx_start(uart_tx_start_reg),
         .tick(tick),
-        .data_in(uart_tx_data_reg),
+        .data_in(uart_tx_data),
         .tx_done(uart_tx_full),
         .tx(o_uart_tx)
     );
@@ -104,13 +104,15 @@ module debugger #(
         if (i_reset) begin
             state <= IDLE;
             uart_rx_done_reg <= 0;
+            uart_tx_data_reg <= 0;
             byte_counter <= 0;
             instruction_buffer <= 0;
             instruction_count <= 0;
-            instruction_counter <= 1;
-            o_write_addr <= 1;
+            instruction_counter <= 0;
+            o_write_addr <= 0;
             o_write_data <= 0;
             o_inst_write_enable <= 0;
+            uart_tx_start_reg <= 0;
         end else begin
             state <= next_state;
             if (uart_rx_done) begin
@@ -129,9 +131,9 @@ module debugger #(
 
     always @(*) begin
         next_state = state;
-        uart_tx_start_reg = 0;
         case (state)
             IDLE: begin
+                uart_tx_start_reg = 0;
                 if (uart_rx_done_reg) begin
                     case (uart_rx_data_reg)
                         8'h01: begin
@@ -288,7 +290,7 @@ module debugger #(
                             end
                             instruction_counter = instruction_counter + 1;
                         end
-                        if (instruction_counter == instruction_count+1) begin // Si se han recibido todas las instrucciones
+                        if (instruction_counter == instruction_count) begin // Si se han recibido todas las instrucciones
                             //o_inst_write_enable = 0;
                             o_mode = original_mode; // Restaurar el modo original
                             o_write_addr = 0;
@@ -345,6 +347,6 @@ module debugger #(
     assign o_debug_clk = (o_mode) ? step_clk : i_clk;
 
     assign uart_tx_start = uart_tx_start_reg;
-    //assign uart_tx_data = uart_tx_data_reg;
+    assign uart_tx_data = uart_tx_data_reg;
 
 endmodule

@@ -178,7 +178,9 @@ module mips #(
         .o_immediate(immediate),
         .o_dir_rs(rs_dir),
         .o_dir_rt(rt_dir),
-        .o_dir_rd(rd_dir)
+        .o_dir_rd(rd_dir),  
+        .o_registers_debug(i_registers_debug)
+
     );
 
     latch #(

@@ -25,6 +25,7 @@ module instruction_fetch #(
     wire [SIZE-1:0] pc_next;
 
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
+    reg [SIZE-1:0] o_instruction_reg;
 
     adder #(
         .SIZE(SIZE)
@@ -32,7 +33,7 @@ module instruction_fetch #(
         .i_a(pc),
         .i_b(1),
         .o_result(adder_output),
-        .i_stall(i_stall || o_writing_instruction_mem) 
+        .i_stall(i_stall || i_inst_write_enable) 
     );
 
     mux #(
@@ -66,11 +67,15 @@ module instruction_fetch #(
             pc <= 0;
             instruction_mem[i_write_addr] <= i_write_data;
         end
+        else if (!i_stall && !i_inst_write_enable) begin
+            o_instruction_reg <= instruction_mem[pc];
+        end
     end
 
     assign input_mux = {i_instruction_jump, adder_output};
     assign o_pc = pc;
-    assign o_instruction = (i_inst_write_enable || i_rst) ? 32'b0 : instruction_mem[pc];
+    assign o_instruction = o_instruction_reg;
+    //assign o_instruction = (i_inst_write_enable || i_rst) ? 32'b0 : instruction_mem[pc];
     assign o_adder = adder_output;
     assign o_writing_instruction_mem = i_inst_write_enable;
 

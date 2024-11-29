@@ -92,7 +92,7 @@ module tb_top;
         .clk(i_clk),
         .reset(i_rst),
         .tick(tick),
-        .rx(pc_uart_rx),
+        .rx(o_uart_tx),
         .data_out(pc_uart_rx_data),
         .valid(pc_uart_rx_done),
         .state_leds(),
@@ -101,7 +101,6 @@ module tb_top;
 
     // Connect the UART modules
     assign i_uart_rx = pc_uart_tx;
-    assign pc_uart_rx = o_uart_tx;
 
     // Clock generation
     always #5 i_clk = ~i_clk;
@@ -137,7 +136,7 @@ module tb_top;
         send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
         
         // Set step-by-step mode
-        send_uart_command(8'h09); // Command to set step-by-step mode
+        //send_uart_command(8'h09); // Command to set step-by-step mode
         
         send_uart_command(8'h11); // Command to set step-by-step mode
 
@@ -145,31 +144,43 @@ module tb_top;
         send_uart_command(8'h0D); // Command to start program
 
         // Request registers and latches
-        send_uart_command(8'h01); // Command to request registers
-        send_uart_command(8'h02); // Command to request IF/ID latch
-        send_uart_command(8'h03); // Command to request ID/EX latch
-        send_uart_command(8'h04); // Command to request EX/MEM latch
-        send_uart_command(8'h05); // Command to request MEM/WB latch
-
-        // Advance one step
-        send_uart_command(8'h0A); // Command to advance one step
-
-        // Request registers and latches again
-        send_uart_command(8'h01); // Command to request registers
-        send_uart_command(8'h02); // Command to request IF/ID latch
-        send_uart_command(8'h03); // Command to request ID/EX latch
-        send_uart_command(8'h04); // Command to request EX/MEM latch
-        send_uart_command(8'h05); // Command to request MEM/WB latch
-
-        // Repeat until the end of the program
-        repeat (3) begin
-            send_uart_command(8'h0A); // Command to advance one step
-            send_uart_command(8'h01); // Command to request registers
-            send_uart_command(8'h02); // Command to request IF/ID latch
-            send_uart_command(8'h03); // Command to request ID/EX latch
-            send_uart_command(8'h04); // Command to request EX/MEM latch
-            send_uart_command(8'h05); // Command to request MEM/WB latch
-        end
+        //send_uart_command(8'h01); // Command to request registers
+//
+        //#100000;
+//
+        //send_uart_command(8'h02); // Command to request IF/ID latch
+//
+        //#100000;
+        //send_uart_command(8'h03); // Command to request ID/EX latch
+//
+        //#100000;
+        //send_uart_command(8'h04); // Command to request EX/MEM latch
+//
+        //#100000;
+        //send_uart_command(8'h05); // Command to request MEM/WB latch
+//
+        //#100000;
+//
+        //// Advance one step
+        //send_uart_command(8'h0A); // Command to advance one step
+//
+        //send_uart_command(8'h08); // Command to request registers
+        //// Request registers and latches again
+        //send_uart_command(8'h01); // Command to request registers
+        //send_uart_command(8'h02); // Command to request IF/ID latch
+        //send_uart_command(8'h03); // Command to request ID/EX latch
+        //send_uart_command(8'h04); // Command to request EX/MEM latch
+        //send_uart_command(8'h05); // Command to request MEM/WB latch
+//
+        //// Repeat until the end of the program
+        //repeat (3) begin
+        //    send_uart_command(8'h0A); // Command to advance one step
+        //    send_uart_command(8'h01); // Command to request registers
+        //    send_uart_command(8'h02); // Command to request IF/ID latch
+        //    send_uart_command(8'h03); // Command to request ID/EX latch
+        //    send_uart_command(8'h04); // Command to request EX/MEM latch
+        //    send_uart_command(8'h05); // Command to request MEM/WB latch
+        //end
 
         // Finish simulation
         #10000 $finish;

@@ -122,18 +122,23 @@ module tb_top;
         // Load a short test program
         send_uart_command(8'h07); // Command to start loading program
         send_uart_command(8'd12); // Cantidad de instrucciones a cargar
-        send_uart_data(32'b00111100000000010000000100000001, 32); // LUI R1, 1
-        send_uart_data(32'b00111100000000110000000000000011, 32); // LUI R3, 2
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
-        send_uart_data(32'b10100100001000010000000000000001, 32); // SH, R1 -> MEM[1]
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
-        send_uart_data(32'b10000100001001010000000000000001, 32); // LH, R5 <- MEM[1]
-        send_uart_data(32'b00000000101000110011100000100001, 32); // R7 = R5 + R3
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
-        send_uart_data(32'b00000000101000110011100000100001, 32); // R7 = R5 + R3
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
+
+        // Send the instructions
+        send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
+        send_uart_data(32'b00111100000000100000000000000001,32); //R2 = 1
+        send_uart_data(32'b00111100000000110000000000001001,32); //R3 = 9
+        send_uart_data(32'b00111100000001000000000000000111,32); //R4 = 7
+        send_uart_data(32'b00111100000001010000000000000011,32); //R5 = 3
+        send_uart_data(32'b00111100000001100000000001100101,32); //R6 = 101
+        send_uart_data(32'b00111100000001110000000000011001,32); //R7 = 25
+        send_uart_data(32'b00000000001000100001100000100011,32); //R3 = R1 - R2 -> 2
+        send_uart_data(32'b00000000011001000010100000100001,32); //R5 = R3 + R4 -> 9
+        send_uart_data(32'b00000000011001100011100000100001,32); //R7 = R3 + R6 -> 103
+        send_uart_data(32'b00000000011001000010100000100001,32); //R15 = R3 + R5
+        send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
+        send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
+        send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
+
         
         // Set step-by-step mode
         //send_uart_command(8'h09); // Command to set step-by-step mode

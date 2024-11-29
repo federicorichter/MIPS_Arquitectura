@@ -280,18 +280,17 @@ module debugger #(
                         byte_counter = byte_counter + 1;
                         if (byte_counter == 5) begin // Si se han recibido 4 bytes de la instrucción
                             o_inst_write_enable = 1;
-                            o_write_data = instruction_buffer; // Escribir la instrucción completa
-                            //for(integer i = 0; i < SIZE; i = i + 1) begin
-                            //    instruction_buffer[i] = instruction_buffer[SIZE-i];
-                            //end
+                            // Invertir la endianess de instruction_buffer antes de cargarlo en o_write_data
+                            //o_write_data = {instruction_buffer[7:0], instruction_buffer[15:8], instruction_buffer[23:16], instruction_buffer[31:24]};
+                            o_write_data = instruction_buffer;
                             byte_counter = 1; // Reiniciar el contador para la siguiente instrucción
-                            if(instruction_counter > 0) begin
+                            if (instruction_counter > 0) begin
                                 o_write_addr = o_write_addr + 1; // Incrementar la dirección de escritura para la siguiente instrucción
                             end
                             instruction_counter = instruction_counter + 1;
                         end
                         if (instruction_counter == instruction_count) begin // Si se han recibido todas las instrucciones
-                            //o_inst_write_enable = 0;
+                            o_inst_write_enable = 0;
                             o_mode = original_mode; // Restaurar el modo original
                             o_write_addr = 0;
                             next_state = WAIT_EXECUTE;

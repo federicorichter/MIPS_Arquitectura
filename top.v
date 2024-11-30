@@ -75,7 +75,7 @@ module mips #(
         .i_rt_if_id(rt_dir),
         .i_rt_id_ex(id_to_ex[27:23]),
         .i_mem_read_id_ex(id_to_ex[14]),
-        .i_jump_brch(id_to_ex[0]),
+        .i_jump_brch(control_signals[JUMP_B]),
         .i_branch(pc_plus_immediate_sel),
         .o_flush(if_flush),
         .o_hazard(hazard_output)
@@ -109,7 +109,7 @@ module mips #(
     )
     IF_ID (
         .clk(clk),
-        .rst(rst || if_flush ),
+        .rst(rst || if_flush),
         .i_enable(~i_stall && ~hazard_output),
         .i_data({
             //pc_plus,//PC + 4
@@ -160,7 +160,7 @@ module mips #(
     )
     mux_dir(
         .i_en(control_signals[JUMP_SRC]),
-        .i_data({{5'b0,o_jmp_direc} << 2 , reg_a_conditional}), 
+        .i_data({{6'b0,o_jmp_direc} << 2 , reg_a_conditional}), 
         .o_data(o_mux_dir)
     );
 
@@ -363,7 +363,7 @@ module mips #(
         .BUS_SIZE(SIZE_REG_DIR)
     ) mux_ret_jump (
         .i_en(mem_to_wb[71]),
-        .i_data({5'd11111,mem_to_wb[6:2]}),
+        .i_data({5'b11111,mem_to_wb[6:2]}),
         .o_data(address_write_reg)
     );
 

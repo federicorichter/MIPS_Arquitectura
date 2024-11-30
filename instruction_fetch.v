@@ -86,18 +86,19 @@ module instruction_fetch #(
         instruction_mem[9] = 32'b00111100000000110000000000000100; // LUI R3, 4
         instruction_mem[10] = 32'b00111100000000110000000000000110; // LUI R3, 6*/
 
-       /* instruction_mem[0] = 32'b00111100000000010000000000000111; // LUI R1, 7 
-        instruction_mem[1] = 32'b00111100000000100000000000000110; // LUI R2, 5
-        instruction_mem[2] = 32'b00111100000000100000000000000110; // LUI R2, 5
-        instruction_mem[3] = 32'b00111100000000100000000000000110; // LUI R2, 5
+        instruction_mem[0] = 32'b00111100000000010000000000000111; // LUI R1, 7 
+        instruction_mem[1] = 32'b00111100000000100000000000000110; // LUI R2, 6
+        instruction_mem[2] = 32'b00111100000000100000000000000110; // LUI R2, 6
+        instruction_mem[3] = 32'b00111100000000100000000000000111; // LUI R2, 7
         instruction_mem[4] = 32'b00000000001000000100100000001001; // JALR, R9,R1
         instruction_mem[5] = 32'b00111100000000100000000000000110; // LUI R2, 6 
         instruction_mem[6] = 32'b00111100000000110000000000000011; // LUI R3, 3
-        instruction_mem[7] = 32'b00111100000000110000000000001111; // LUI R3, 15
-        instruction_mem[8] = 32'b00111100000000110000000000001101; // LUI R3, 13 -> Salta aca
+        instruction_mem[7] = 32'b00111100000000110000000000001111; // LUI R3, 15 -> Salta aca
+        instruction_mem[8] = 32'b00111100000000110000000000001101; // LUI R3, 13 
         instruction_mem[9] = 32'b00111100000000110000000000000101; // LUI R3, 5 
+        instruction_mem[10] = 32'b00111100000000100000000000000110; // LUI R2, 6 
         //instruction_mem[9] = 32'b00111100000000110000000000000100; // LUI R3, 4
-        //instruction_mem[10] = 32'b00111100000000110000000000000110; // LUI R3, 6*/
+        //instruction_mem[10] = 32'b00111100000000110000000000000110; // LUI R3, 6
 
     end 
 

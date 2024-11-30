@@ -74,7 +74,7 @@ module general_control #(
             // J-Type Instructions
             12'b000010??????: control_reg = 18'b110000000000000000; // J (jump)
             12'b000011??????: control_reg = 18'b110100000000000001; // JAL (jump and link)
-            12'b000000001001: control_reg = 18'b100000000100000001; // JALR (jump and link register)
+            12'b000000001001: control_reg = 18'b100000000010000001; // JALR (jump and link register)
             12'b000000001000: control_reg = 18'b100000000000000000; // JR (jump register)
 
             default: control_reg = 18'b000000000000000000; // Default control signals

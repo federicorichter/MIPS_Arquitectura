@@ -28,7 +28,6 @@ module tb_top;
     wire [7:0] uart_tx_data;
 
     // Signals for the second UART module (PC simulation)
-    wire pc_uart_rx;
     wire pc_uart_tx;
     wire pc_uart_rx_done;
     wire pc_uart_tx_start;
@@ -121,75 +120,78 @@ module tb_top;
 
         // Set continuous mode
         send_uart_command(8'h08); // Command to set continuous mode
-
         // Load a short test program
         send_uart_command(8'h07); // Command to start loading program
         send_uart_command(8'd15); // Cantidad de instrucciones a cargar
-
         // Send the instructions
-        send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
-        send_uart_data(32'b00111100000000100000000000000001,32); //R2 = 1
-        send_uart_data(32'b00111100000000110000000000001001,32); //R3 = 9
-        send_uart_data(32'b00111100000001000000000000000111,32); //R4 = 7
-        send_uart_data(32'b00111100000001010000000000000011,32); //R5 = 3
-        send_uart_data(32'b00111100000001100000000001100101,32); //R6 = 101
-        send_uart_data(32'b00111100000001110000000000011001,32); //R7 = 25
-        send_uart_data(32'b00000000001000100001100000100011,32); //R3 = R1 - R2 -> 2
-        send_uart_data(32'b00000000011001000010100000100001,32); //R5 = R3 + R4 -> 9
-        send_uart_data(32'b00000000011001100011100000100001,32); //R7 = R3 + R6 -> 103
-        send_uart_data(32'b00000000011001000010100000100001,32); //R15 = R3 + R5
-        send_uart_data(32'b00111100000011110000000010010100,32); //R15 = 300
-        send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
-        send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
-        send_uart_data(32'b00111100000000010000000000000011,32); //R1 = 3
+        send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
+        send_uart_data(32'b00111100000000100000000000000001, 32); // R2 = 1
+        send_uart_data(32'b00111100000000110000000000001001, 32); // R3 = 9
+        send_uart_data(32'b00111100000001000000000000000111, 32); // R4 = 7
+        send_uart_data(32'b00111100000001010000000000000011, 32); // R5 = 3
+        send_uart_data(32'b00111100000001100000000001100101, 32); // R6 = 101
+        send_uart_data(32'b00111100000001110000000000011001, 32); // R7 = 25
+        send_uart_data(32'b00000000001000100001100000100011, 32); // R3 = R1 - R2 -> 2
+        send_uart_data(32'b00000000011001000010100000100001, 32); // R5 = R3 + R4 -> 9
+        send_uart_data(32'b00000000011001100011100000100001, 32); // R7 = R3 + R6 -> 103
+        send_uart_data(32'b00000000011001000010100000100001, 32); // R15 = R3 + R5
+        send_uart_data(32'b00111100000011110000000010010100, 32); // R15 = 300
+        send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
+        send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
+        send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
 
-        
-        // Set step-by-step mode
-        //send_uart_command(8'h09); // Command to set step-by-step mode
-        
         send_uart_command(8'h11); // Command to set step-by-step mode
-
+        wait_for_ready(); // Wait for 'R'
+     
 
         send_uart_command(8'h0D); // Command to start program
+        
+        #1
+        
+        send_uart_command(8'h09); // Command to set step-by-step mode
+
 
         // Request registers and latches
         //send_uart_command(8'h01); // Command to request registers
 
-        #100000;
-//
+        #1000000;
+
+        // Set step-by-step mode
+        //send_uart_command(8'h09); // Command to set step-by-step mode
+        //wait_for_ready(); // Wait for 'R'
+
         send_uart_command(8'h02); // Command to request IF/ID latch
-//
-        //#100000;
-        //send_uart_command(8'h03); // Command to request ID/EX latch
-//
-        //#100000;
-        //send_uart_command(8'h04); // Command to request EX/MEM latch
-//
-        //#100000;
-        //send_uart_command(8'h05); // Command to request MEM/WB latch
-//
-        //#100000;
-//
-        //// Advance one step
-        //send_uart_command(8'h0A); // Command to advance one step
-//
-        //send_uart_command(8'h08); // Command to request registers
-        //// Request registers and latches again
-        //send_uart_command(8'h01); // Command to request registers
-        //send_uart_command(8'h02); // Command to request IF/ID latch
-        //send_uart_command(8'h03); // Command to request ID/EX latch
-        //send_uart_command(8'h04); // Command to request EX/MEM latch
-        //send_uart_command(8'h05); // Command to request MEM/WB latch
-//
-        //// Repeat until the end of the program
-        //repeat (3) begin
-        //    send_uart_command(8'h0A); // Command to advance one step
-        //    send_uart_command(8'h01); // Command to request registers
-        //    send_uart_command(8'h02); // Command to request IF/ID latch
-        //    send_uart_command(8'h03); // Command to request ID/EX latch
-        //    send_uart_command(8'h04); // Command to request EX/MEM latch
-        //    send_uart_command(8'h05); // Command to request MEM/WB latch
-        //end
+        receive_data_from_uart(5); // Receive 4 bytes of data
+
+        send_uart_command(8'h03); // Command to request ID/EX latch
+        receive_data_from_uart(17); // Receive 17 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h04); // Command to request ID/EX latch
+        receive_data_from_uart(10); // Receive 17 bytes of data
+        wait_for_ready;
+
+        send_uart_command(8'h05); // Command to request MEM/WB latch
+        receive_data_from_uart(9); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+
+        send_uart_command(8'h0a); // Command to step
+
+        send_uart_command(8'h02); // Command to request IF/ID latch
+        receive_data_from_uart(5); // Receive 4 bytes of data
+
+        send_uart_command(8'h03); // Command to request ID/EX latch
+        receive_data_from_uart(17); // Receive 17 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h04); // Command to request ID/EX latch
+        receive_data_from_uart(10); // Receive 17 bytes of data
+        wait_for_ready;
+
+        send_uart_command(8'h05); // Command to request MEM/WB latch
+        receive_data_from_uart(9); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+
 
         // Finish simulation
         #10000 $finish;
@@ -208,6 +210,24 @@ module tb_top;
             end
         end
     endtask
+
+    task receive_data_from_uart;
+        input integer num_bytes;
+        integer i;
+        reg [7:0] data [0:31];
+        begin
+            for (i = 0; i < num_bytes; i = i + 1) begin
+                @(negedge pc_uart_rx_done);
+                data[i] = pc_uart_rx_data;
+            end
+            $display("Data received:");
+            for (i = 0; i < num_bytes; i = i + 1) begin
+                $write("%h ", data[i]);
+            end
+            $display("");
+        end
+    endtask
+
     // Task to send UART command
     task send_uart_command(input [7:0] command);
         begin
@@ -225,6 +245,16 @@ module tb_top;
         begin
             for (i = 0; i < data_size/8; i = i + 1) begin
                 send_uart_command(data[8*i +: 8]);
+            end
+        end
+    endtask
+
+    // Function to wait for 'R' indicating ready
+    task wait_for_ready;
+        begin
+            @(posedge pc_uart_rx_done);
+            while (pc_uart_rx_data != "R") begin
+                @(posedge pc_uart_rx_done);
             end
         end
     endtask

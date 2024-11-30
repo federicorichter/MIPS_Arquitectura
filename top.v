@@ -69,15 +69,35 @@ module mips #(
     wire [SIZE-1:0] i_write_data;
     wire o_writing_instruction_mem;
     wire [IF_ID_SIZE-1:0] if_to_id;
+    reg [IF_ID_SIZE-1:0] if_to_id_reg;
     wire [ID_EX_SIZE-1:0] id_to_ex; // Declarar como arreglo
+    reg [ID_EX_SIZE-1:0] id_to_ex_reg;
     wire [EX_MEM_SIZE-1:0] ex_to_mem;
+    reg [EX_MEM_SIZE-1:0] ex_to_mem_reg;
     wire [MEM_WB_SIZE-1:0] mem_to_wb;
+    reg [MEM_WB_SIZE-1:0] mem_to_wb_reg;
     wire o_mode; // Wire to indicate the mode of operation for debugging
     wire [NUM_REGISTERS*SIZE-1:0]i_registers_debug;
     wire uart_rx_done, uart_tx_start, uart_tx_full, uart_rx_empty;
     wire [7:0] uart_rx_data, uart_tx_data;
     wire baud_tick;
     wire clk_to_use;
+
+
+    always @(posedge i_clk) begin
+        if (i_rst) begin
+            if_to_id_reg <= 0;
+            id_to_ex_reg <= 0;
+            ex_to_mem_reg <= 0;
+            mem_to_wb_reg <= 0;
+        end
+        else begin
+            if_to_id_reg <= if_to_id;
+            id_to_ex_reg <= id_to_ex;
+            ex_to_mem_reg <= ex_to_mem;
+            mem_to_wb_reg <= mem_to_wb;
+        end
+    end
 
     debugger #(
         .SIZE(SIZE),
@@ -93,10 +113,10 @@ module mips #(
         .i_reset(i_rst),
         .i_uart_rx(i_uart_rx),
         .o_uart_tx(o_uart_tx),
-        .i_IF_ID(if_to_id),
-        .i_ID_EX(id_to_ex),
-        .i_EX_MEM(ex_to_mem),
-        .i_MEM_WB(mem_to_wb),
+        .i_IF_ID(if_to_id_reg),
+        .i_ID_EX(id_to_ex_reg),
+        .i_EX_MEM(ex_to_mem_reg),
+        .i_MEM_WB(mem_to_wb_reg),
         .i_debug_data(debug_data),
         .o_mode(o_mode),
         .o_debug_clk(clk_to_use),

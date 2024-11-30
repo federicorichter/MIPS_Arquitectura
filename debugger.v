@@ -38,12 +38,19 @@ module debugger #(
     reg [7:0] uart_rx_data_reg;
     reg [7:0] uart_tx_data_reg;
     reg [31:0] instruction_buffer; // Buffer para acumular los bytes de la instrucción
+    reg [((SIZE*NUM_REGISTERS + 7) / 8) * 8 - 1:0] padded_registers;
+    reg [((IF_ID_SIZE + 7) / 8) * 8 - 1:0] padded_if_id;
+    reg [((ID_EX_SIZE + 7) / 8) * 8 - 1:0] padded_id_ex;
+    reg [((EX_MEM_SIZE + 7) / 8) * 8 - 1:0] padded_ex_mem;
+    reg [((MEM_WB_SIZE + 7) / 8) * 8 - 1:0] padded_mem_wb;
     integer instruction_count; // Cantidad de instrucciones a recibir
     integer instruction_counter; // Contador de instrucciones recibidas
     integer byte_counter; // Contador de bytes recibidos
     wire [7:0] uart_rx_data;
     wire [7:0] uart_tx_data;
     wire uart_rx_done; 
+    reg [IF_ID_SIZE-1:0] i_IF_ID_REG;
+    reg send_idle_ack_flag;
 
     // State machine states
     localparam IDLE = 0;
@@ -80,9 +87,19 @@ module debugger #(
     localparam WAIT_RX_DONE_DOWN_LOAD_PROGRAM = 31;
     localparam WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS = 32;
     localparam WAIT_RX_DONE_DOWN_WAIT_EXECUTE = 33;
+    localparam SEND_IDLE_ACK = 34; // Nuevo estado para enviar 'R' al volver a IDLE
+    localparam WAIT_UART_TX_FULL_DOWN_IDLE_ACK = 35; // Nuevo estado para esperar a que se envíe 'R'
+    localparam WAIT_NO_TX_FULL = 36;
+    localparam WAIT_TX_DOWN_IDLE_ACK = 37;
+
 
     reg [5:0] state, next_state;
-    integer i;
+    reg [31:0] i;
+    reg [31:0] send_registers_counter;
+    reg [31:0] send_if_id_counter;
+    reg [31:0] send_id_ex_counter;
+    reg [31:0] send_ex_mem_counter;
+    reg [31:0] send_mem_wb_counter;
 
     // UART modules
     wire tick;
@@ -100,9 +117,9 @@ module debugger #(
     ) uart_tx_inst (
         .clk(i_clk),
         .reset(i_reset),
-        .tx_start(uart_tx_start_data),
+        .tx_start(uart_tx_start),
         .tick(tick),
-        .data_in(uart_tx_data),
+        .data_in(uart_tx_data_reg),
         .tx_done(uart_tx_full),
         .tx(o_uart_tx)
     );
@@ -126,7 +143,6 @@ module debugger #(
         uart_rx_done_reg <= 1;
     end
 
-    // State machine
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             state <= IDLE;
@@ -140,6 +156,12 @@ module debugger #(
             o_write_data <= 0;
             o_inst_write_enable <= 0;
             uart_tx_start_reg <= 0;
+            i <= 0;
+            send_registers_counter <= 0;
+            send_if_id_counter <= 0;
+            send_id_ex_counter <= 0;
+            send_ex_mem_counter <= 0;
+            send_mem_wb_counter <= 0;
         end else begin
             state <= next_state;
             if (uart_rx_done) begin
@@ -156,6 +178,11 @@ module debugger #(
         case (state)
             IDLE: begin
                 uart_tx_start_reg = 0;
+                send_registers_counter = 0;
+                send_if_id_counter = 0;
+                send_id_ex_counter = 0;
+                send_ex_mem_counter = 0;
+                send_mem_wb_counter = 0;
                 if (uart_rx_done_reg) begin
                     case (uart_rx_data_reg)
                         8'h01: next_state = WAIT_RX_DONE_DOWN_SEND_REGISTERS;
@@ -177,188 +204,194 @@ module debugger #(
                             o_mode = 1; // Modo paso a paso
                             next_state = WAIT_RX_DONE_DOWN_IDLE;
                         end
-                        8'h0A: next_state = WAIT_RX_DONE_DOWN_IDLE; // Comando para avanzar un ciclo de reloj
+                        8'h0A: next_state = STEP_CLOCK; // Comando para avanzar un ciclo de reloj
                         8'h0B: next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS; // Comando para leer memoria de datos
-                        8'h0C: begin // Comando para finalizar la carga de instrucciones
-                            o_inst_write_enable = 0;
-                            next_state = WAIT_RX_DONE_DOWN_IDLE;
-                        end
                         8'h0D: begin // Comando para iniciar después de la escritura
                             o_inst_write_enable = 0;
                             next_state = WAIT_RX_DONE_DOWN_IDLE;
                         end
-                        8'h0E: next_state = WAIT_RX_DONE_DOWN_WAIT_EXECUTE; // Comando para esperar ejecución
                         default: next_state = WAIT_RX_DONE_DOWN_IDLE;
                     endcase
                 end
             end
+            SEND_IDLE_ACK: begin
+                uart_tx_data_reg = "R"; // ASCII de 'R'
+                uart_tx_start_reg = 1;
+                next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+            end
+            WAIT_UART_TX_FULL_DOWN_IDLE_ACK: begin
+                if (uart_tx_full) begin
+                    next_state = WAIT_TX_DOWN_IDLE_ACK;
+                end else begin
+                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+                end
+            end
+            WAIT_NO_TX_FULL: begin
+                if (!uart_tx_full) begin
+                    next_state = SEND_IDLE_ACK;
+                end else begin
+                    next_state = WAIT_NO_TX_FULL;
+                end
+            end
+            WAIT_TX_DOWN_IDLE_ACK: begin
+                if (!uart_tx_full) begin
+                    next_state = IDLE;
+                end else begin
+                    next_state = WAIT_TX_DOWN_IDLE_ACK;
+                end
+            end
             SEND_REGISTERS: begin
-                // Send registers through UART
-                for (i = 0; i < SIZE*NUM_REGISTERS; i = i + 8) begin
-                    uart_tx_data_reg = i_registers_debug[i +: 8];
+                // Llenar el registro con ceros adicionales
+                padded_registers = {{((SIZE*NUM_REGISTERS + 7) / 8) * 8 - SIZE*NUM_REGISTERS{1'b0}}, i_registers_debug};
+                if (send_registers_counter < ((SIZE*NUM_REGISTERS + 7) / 8) * 8) begin
+                    uart_tx_data_reg = padded_registers[send_registers_counter +: 8];
                     uart_tx_start_reg = 1;
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_REGISTERS;
-                end
-                if (next_state == WAIT_UART_TX_FULL_DOWN_SEND_REGISTERS) begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_REGISTERS;
                 end else begin
-                    next_state = IDLE;
-                end
-            end
-            SEND_IF_ID: begin
-                // Send IF/ID latch through UART
-                for (i = 0; i < IF_ID_SIZE; i = i + 8) begin
-                    uart_tx_data_reg = i_IF_ID[i*8 +: 8];
-                    uart_tx_start_reg = 1;
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_IF_ID;
-                end
-                if (next_state == WAIT_UART_TX_FULL_DOWN_SEND_IF_ID) begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_IF_ID;
-                end else begin
-                    next_state = IDLE;
-                end
-            end
-            SEND_ID_EX: begin
-                // Send ID/EX latch through UART
-                for (i = 0; i < ID_EX_SIZE; i = i + 8) begin
-                    uart_tx_data_reg = i_ID_EX[i*8 +: 8];
-                    uart_tx_start_reg = 1;
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_ID_EX;
-                end
-                if (next_state == WAIT_UART_TX_FULL_DOWN_SEND_ID_EX) begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_ID_EX;
-                end else begin
-                    next_state = IDLE;
-                end
-            end
-            SEND_EX_MEM: begin
-                // Send EX/MEM latch through UART
-                for (i = 0; i < EX_MEM_SIZE; i = i + 8) begin
-                    uart_tx_data_reg = i_EX_MEM[i*8 +: 8];
-                    uart_tx_start_reg = 1;
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM;
-                end
-                if (next_state == WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM) begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM;
-                end else begin
-                    next_state = IDLE;
-                end
-            end
-            SEND_MEM_WB: begin
-                // Send MEM/WB latch through UART
-                for (i = 0; i < MEM_WB_SIZE; i = i + 8) begin
-                    uart_tx_data_reg = i_MEM_WB[i*8 +: 8];
-                    uart_tx_start_reg = 1;
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB;
-                end
-                if (next_state == WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB) begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB;
-                end else begin
-                    next_state = IDLE;
-                end
-            end
-            SEND_MEMORY_0: begin
-                // Send memory data through UART
-                uart_tx_data_reg = i_debug_data[7:0];
-                uart_tx_start_reg = 1;
-                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0;
-                if (next_state == WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0) begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0;
-                end else begin
-                    next_state = IDLE;
-                end
-            end
-            SEND_MEMORY_1: begin
-                uart_tx_data_reg = i_debug_data[15:8];
-                uart_tx_start_reg = 1;
-                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_1;
-                if (next_state == WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_1) begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_1;
-                end else begin
-                    next_state = IDLE;
-                end
-            end
-            SEND_MEMORY_2: begin
-                uart_tx_data_reg = i_debug_data[23:16];
-                uart_tx_start_reg = 1;
-                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_2;
-                if (next_state == WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_2) begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_2;
-                end else begin
-                    next_state = IDLE;
-                end
-            end
-            SEND_MEMORY_3: begin
-                uart_tx_data_reg = i_debug_data[31:24];
-                uart_tx_start_reg = 1;
-                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_3;
-                if (next_state == WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_3) begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_3;
-                end else begin
-                    next_state = IDLE;
+                    next_state = WAIT_NO_TX_FULL;
                 end
             end
             WAIT_UART_TX_FULL_DOWN_SEND_REGISTERS: begin
                 if (uart_tx_full) begin
+                    send_registers_counter = send_registers_counter + 8;
                     next_state = SEND_REGISTERS;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_REGISTERS;
                 end
             end
+            
+            SEND_IF_ID: begin
+                // Llenar el registro con ceros adicionales
+                padded_if_id = {{((IF_ID_SIZE + 7) / 8) * 8 - IF_ID_SIZE{1'b0}}, i_IF_ID};
+                if (send_if_id_counter < ((IF_ID_SIZE + 7) / 8) * 8) begin
+                    uart_tx_data_reg = padded_if_id[send_if_id_counter +: 8];
+                    uart_tx_start_reg = 1;
+                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_IF_ID;
+                end else begin
+                    next_state = WAIT_NO_TX_FULL;
+                end
+            end
             WAIT_UART_TX_FULL_DOWN_SEND_IF_ID: begin
                 if (uart_tx_full) begin
+                    send_if_id_counter = send_if_id_counter + 8;
                     next_state = SEND_IF_ID;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_IF_ID;
                 end
             end
+            
+            SEND_ID_EX: begin
+                // Llenar el registro con ceros adicionales
+                padded_id_ex = {{((ID_EX_SIZE + 7) / 8) * 8 - ID_EX_SIZE{1'b0}}, i_ID_EX};
+                if (send_id_ex_counter < ((ID_EX_SIZE + 7) / 8) * 8) begin
+                    uart_tx_data_reg = padded_id_ex[send_id_ex_counter +: 8];
+                    uart_tx_start_reg = 1;
+                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_ID_EX;
+                end else begin
+                    next_state = WAIT_NO_TX_FULL;
+                end
+            end
             WAIT_UART_TX_FULL_DOWN_SEND_ID_EX: begin
                 if (uart_tx_full) begin
+                    send_id_ex_counter = send_id_ex_counter + 8;
                     next_state = SEND_ID_EX;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_ID_EX;
                 end
             end
+            
+            SEND_EX_MEM: begin
+                // Llenar el registro con ceros adicionales
+                padded_ex_mem = {{((EX_MEM_SIZE + 7) / 8) * 8 - EX_MEM_SIZE{1'b0}}, i_EX_MEM};
+                if (send_ex_mem_counter < ((EX_MEM_SIZE + 7) / 8) * 8) begin
+                    uart_tx_data_reg = padded_ex_mem[send_ex_mem_counter +: 8];
+                    uart_tx_start_reg = 1;
+                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM;
+                end else begin
+                    next_state = WAIT_NO_TX_FULL;
+                end
+            end
             WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM: begin
                 if (uart_tx_full) begin
+                    send_ex_mem_counter = send_ex_mem_counter + 8;
                     next_state = SEND_EX_MEM;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM;
                 end
             end
+            
+            SEND_MEM_WB: begin
+                // Llenar el registro con ceros adicionales
+                padded_mem_wb = {{((MEM_WB_SIZE + 7) / 8) * 8 - MEM_WB_SIZE{1'b0}}, i_MEM_WB};
+                if (send_mem_wb_counter < ((MEM_WB_SIZE + 7) / 8) * 8) begin
+                    uart_tx_data_reg = padded_mem_wb[send_mem_wb_counter +: 8];
+                    uart_tx_start_reg = 1;
+                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB;
+                end else begin
+                    next_state = WAIT_NO_TX_FULL;
+                end
+            end
             WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB: begin
                 if (uart_tx_full) begin
+                    send_mem_wb_counter = send_mem_wb_counter + 8;
                     next_state = SEND_MEM_WB;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB;
                 end
             end
+            
+            SEND_MEMORY_0: begin
+                // Send memory data through UART
+                uart_tx_data_reg = i_debug_data[7:0];
+                uart_tx_start_reg = 1;
+                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0;
+            end
             WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0: begin
-                if (uart_tx_full) begin
-                    next_state = SEND_MEMORY_1;
+                if (!uart_tx_full) begin
+                    next_state = SEND_MEMORY_0;
                 end else begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0;
+                    next_state = SEND_MEMORY_1;
                 end
+            end
+            
+            SEND_MEMORY_1: begin
+                uart_tx_data_reg = i_debug_data[15:8];
+                uart_tx_start_reg = 1;
+                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_1;
             end
             WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_1: begin
-                if (uart_tx_full) begin
+                if (!uart_tx_full) begin
+                    next_state = SEND_MEMORY_1;
+                end else begin
+                    next_state = SEND_MEMORY_2;
+                end
+            end
+            
+            SEND_MEMORY_2: begin
+                uart_tx_data_reg = i_debug_data[23:16];
+                uart_tx_start_reg = 1;
+                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_2;
+            end
+
+            WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_2: begin
+                if (!uart_tx_full) begin
                     next_state = SEND_MEMORY_2;
                 end else begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_1;
+                    next_state = SEND_MEMORY_3;
                 end
             end
-            WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_2: begin
-                if (uart_tx_full) begin
+            
+            SEND_MEMORY_3: begin
+                uart_tx_data_reg = i_debug_data[31:24];
+                uart_tx_start_reg = 1;
+                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_3;
+            end
+
+            WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_3: begin
+                if (!uart_tx_full) begin
                     next_state = SEND_MEMORY_3;
                 end else begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_2;
-                end
-            end
-            WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_3: begin
-                if (uart_tx_full) begin
-                    next_state = IDLE;
-                end else begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_3;
+                    next_state = WAIT_NO_TX_FULL;
                 end
             end
             LOAD_PROGRAM: begin
@@ -377,7 +410,6 @@ module debugger #(
                         byte_counter = byte_counter + 1;
                         if (byte_counter == 5) begin // Si se han recibido 4 bytes de la instrucción
                             o_inst_write_enable = 1;
-                            // Invertir la endianess de instruction_buffer antes de cargarlo en o_write_data
                             o_write_data = instruction_buffer;
                             byte_counter = 1; // Reiniciar el contador para la siguiente instrucción
                             instruction_counter = instruction_counter + 1;
@@ -386,7 +418,6 @@ module debugger #(
                             end
                         end
                         if (instruction_counter == instruction_count) begin // Si se han recibido todas las instrucciones
-                            o_inst_write_enable = 0;
                             o_mode = original_mode; // Restaurar el modo original
                             o_write_addr = 0;
                             next_state = WAIT_EXECUTE;
@@ -408,103 +439,96 @@ module debugger #(
                     if (next_state == SEND_MEMORY_0) begin
                         next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS;
                     end else begin
-                        next_state = IDLE;
+                        next_state = WAIT_NO_TX_FULL;
                     end
                 end
             end
             WAIT_EXECUTE: begin
                 if (uart_rx_done_reg) begin
                     case (uart_rx_data_reg)
-                        8'h08: o_mode = 0; // Modo continuo
-                        8'h09: o_mode = 1; // Modo paso a paso
-                        8'h11: next_state = IDLE; // Comando para comenzar a ejecutar el pipeline
+                        8'h11: next_state = WAIT_NO_TX_FULL; // Comando para comenzar a ejecutar el pipeline
                         default: next_state = WAIT_EXECUTE;
                     endcase
                     if (next_state == WAIT_EXECUTE) begin
                         next_state = WAIT_RX_DONE_DOWN_WAIT_EXECUTE;
                     end else begin
-                        next_state = IDLE;
+                        next_state = WAIT_NO_TX_FULL;
                     end
                 end
             end
-            WAIT_STEP: begin
-                if (!uart_rx_empty && uart_rx_data_reg == 8'h0A) begin
-                    next_state = STEP_CLOCK;
+            STEP_CLOCK: begin
+                next_state = IDLE;
+            end
+            WAIT_RX_DONE_DOWN_IDLE: begin
+                if (!uart_rx_done) begin
+                    next_state = IDLE;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_IDLE;
                 end
             end
-            STEP_CLOCK: begin
-                next_state = WAIT_STEP;
+            WAIT_RX_DONE_DOWN_SEND_REGISTERS: begin
+                if (!uart_rx_done) begin
+                    next_state = SEND_REGISTERS;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_SEND_REGISTERS;
+                end
             end
-        WAIT_RX_DONE_DOWN_IDLE: begin
-            if (!uart_rx_done) begin
-                next_state = IDLE;
-            end else begin
-                next_state = WAIT_RX_DONE_DOWN_IDLE;
+            WAIT_RX_DONE_DOWN_SEND_IF_ID: begin
+                if (!uart_rx_done) begin
+                    next_state = SEND_IF_ID;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_SEND_IF_ID;
+                end
             end
-        end
-        WAIT_RX_DONE_DOWN_SEND_REGISTERS: begin
-            if (!uart_rx_done) begin
-                next_state = SEND_REGISTERS;
-            end else begin
-                next_state = WAIT_RX_DONE_DOWN_SEND_REGISTERS;
+            WAIT_RX_DONE_DOWN_SEND_ID_EX: begin
+                if (!uart_rx_done) begin
+                    next_state = SEND_ID_EX;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_SEND_ID_EX;
+                end
             end
-        end
-        WAIT_RX_DONE_DOWN_SEND_IF_ID: begin
-            if (!uart_rx_done) begin
-                next_state = SEND_IF_ID;
-            end else begin
-                next_state = WAIT_RX_DONE_DOWN_SEND_IF_ID;
+            WAIT_RX_DONE_DOWN_SEND_EX_MEM: begin
+                if (!uart_rx_done) begin
+                    next_state = SEND_EX_MEM;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_SEND_EX_MEM;
+                end
             end
-        end
-        WAIT_RX_DONE_DOWN_SEND_ID_EX: begin
-            if (!uart_rx_done) begin
-                next_state = SEND_ID_EX;
-            end else begin
-                next_state = WAIT_RX_DONE_DOWN_SEND_ID_EX;
+            WAIT_RX_DONE_DOWN_SEND_MEM_WB: begin
+                if (!uart_rx_done) begin
+                    next_state = SEND_MEM_WB;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_SEND_MEM_WB;
+                end
             end
-        end
-        WAIT_RX_DONE_DOWN_SEND_EX_MEM: begin
-            if (!uart_rx_done) begin
-                next_state = SEND_EX_MEM;
-            end else begin
-                next_state = WAIT_RX_DONE_DOWN_SEND_EX_MEM;
+            WAIT_RX_DONE_DOWN_SEND_MEMORY: begin
+                if (!uart_rx_done) begin
+                    next_state = SEND_MEMORY_0;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_SEND_MEMORY;
+                end
             end
-        end
-        WAIT_RX_DONE_DOWN_SEND_MEM_WB: begin
-            if (!uart_rx_done) begin
-                next_state = SEND_MEM_WB;
-            end else begin
-                next_state = WAIT_RX_DONE_DOWN_SEND_MEM_WB;
+            WAIT_RX_DONE_DOWN_LOAD_PROGRAM: begin
+                if (!uart_rx_done) begin
+                    next_state = LOAD_PROGRAM;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
+                end
             end
-        end
-        WAIT_RX_DONE_DOWN_SEND_MEMORY: begin
-            if (!uart_rx_done) begin
-                next_state = SEND_MEMORY_0;
-            end else begin
-                next_state = WAIT_RX_DONE_DOWN_SEND_MEMORY;
+            WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS: begin
+                if (!uart_rx_done) begin
+                    next_state = RECEIVE_ADDRESS;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS;
+                end
             end
-        end
-        WAIT_RX_DONE_DOWN_LOAD_PROGRAM: begin
-            if (!uart_rx_done) begin
-                next_state = LOAD_PROGRAM;
-            end else begin
-                next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
+            WAIT_RX_DONE_DOWN_WAIT_EXECUTE: begin
+                if (!uart_rx_done) begin
+                    next_state = WAIT_EXECUTE;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_WAIT_EXECUTE;
+                end
             end
-        end
-        WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS: begin
-            if (!uart_rx_done) begin
-                next_state = RECEIVE_ADDRESS;
-            end else begin
-                next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS;
-            end
-        end
-        WAIT_RX_DONE_DOWN_WAIT_EXECUTE: begin
-            if (!uart_rx_done) begin
-                next_state = WAIT_EXECUTE;
-            end else begin
-                next_state = WAIT_RX_DONE_DOWN_WAIT_EXECUTE;
-            end
-        end
             default: next_state = IDLE;
         endcase
     end
@@ -523,6 +547,6 @@ module debugger #(
     assign o_debug_clk = (o_mode) ? step_clk : i_clk;
 
     assign uart_tx_start = uart_tx_start_reg;
-    assign uart_tx_data = uart_tx_data_reg;
+    //assign uart_tx_data = uart_tx_data_reg;
 
 endmodule

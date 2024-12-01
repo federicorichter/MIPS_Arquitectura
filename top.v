@@ -2,7 +2,7 @@ module mips #(
     parameter SIZE = 32,
     parameter SIZE_OP = 6,
     parameter CONTROL_SIZE = 18,
-    parameter SIZE_REG_DIR = 5
+    parameter SIZE_REG_DIR = 5,
     parameter IF_ID_SIZE = 32,
     parameter ID_EX_SIZE = 129,
     parameter EX_MEM_SIZE = 77,
@@ -168,7 +168,7 @@ module mips #(
     adder_pc(
         .i_a(pc_value),
         .i_b(1),
-        .i_stall(i_stall || i_inst_write_enable)
+        .i_stall(i_stall || i_inst_write_enable),
         .o_result(pc_plus_4)
     );
   
@@ -177,7 +177,7 @@ module mips #(
     ) IF (
         .i_clk(clk_to_use),
         .i_rst(i_rst),
-        .i_stall(i_stall || o_writing_instruction_mem || hazard_output)), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
+        .i_stall(i_stall || o_writing_instruction_mem || hazard_output), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
        // .i_instruction_jump(), //bit control jump
         .i_pc(pc_if),
         .i_mux_selec(pc_source), // selector del mux

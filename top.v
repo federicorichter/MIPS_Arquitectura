@@ -39,7 +39,7 @@ module mips #(
     wire [SIZE-1:0] immediate;
     wire [4:0] rs_dir, rd_dir, rt_dir;
     wire [CONTROL_SIZE-1:0] control_signals;
-    wire [31:0] if_to_id;
+    wire [63:0] if_to_id;
     wire [128:0] id_to_ex;
     wire [4:0]reg_address;
     wire [SIZE-1:0] reg_alu_res;

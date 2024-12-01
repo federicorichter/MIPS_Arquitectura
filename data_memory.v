@@ -25,7 +25,7 @@ module data_memory #(
     reg [DATA_WIDTH-1:0] debug_data_reg;
     integer i;
 
-    always @(negedge clk or negedge rst) begin
+    always @(negedge clk) begin
         if (rst) begin
             // Inicializa toda la memoria a cero
             for (i = 0; i < MEM_SIZE; i = i + 1) begin

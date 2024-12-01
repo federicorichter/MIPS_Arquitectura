@@ -40,7 +40,7 @@ module instruction_fetch #(
         if (i_rst) 
             pc <= 32'b0;
         else if (!i_stall && !i_inst_write_enable) begin
-            if (pc_next < MAX_INSTRUCTION - 1) begin
+            if (pc < MAX_INSTRUCTION - 1) begin
                 pc <= i_pc;
             end else begin
                 pc <= 0;
@@ -58,7 +58,7 @@ module instruction_fetch #(
             end
         end
         if (i_inst_write_enable) begin
-            pc <= 0;
+            //pc <= 0;
             instruction_mem[i_write_addr] <= i_write_data;
         end
         else if (!i_stall && !i_inst_write_enable) begin

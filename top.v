@@ -93,6 +93,7 @@ module mips #(
             id_to_ex_reg <= 0;
             ex_to_mem_reg <= 0;
             mem_to_wb_reg <= 0;
+            //pc_if <= 0;
         end
         else begin
             if_to_id_reg <= if_to_id;
@@ -276,6 +277,7 @@ module mips #(
     adder #(
         .SIZE(SIZE)
     ) adder_pc_immediate(
+        .i_stall(i_stall || i_inst_write_enable),
         .i_a(if_to_id[63:32]),
         .i_b(immediate),
         .o_result(immediate_plus_pc)

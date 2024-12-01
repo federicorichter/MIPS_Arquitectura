@@ -14,7 +14,7 @@ module hazard_detection #(
 );
 
     assign o_hazard = (i_mem_read_id_ex && ((i_rs_if_id == i_rt_id_ex) || (i_rt_if_id == i_rt_id_ex))) ? 1 : 0;  
-    assign o_flush = (i_jump_brch || i_branch)? 1 : 0;
+    assign o_flush = (i_jump_brch || i_branch) ? 1 : 0;
 
     //assign o_flush = 
 

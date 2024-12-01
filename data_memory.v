@@ -74,7 +74,7 @@ module data_memory #(
         debug_data_reg <= {mem[debug_addr+3], mem[debug_addr+2], mem[debug_addr+1], mem[debug_addr]};
     end
 
-    assign read_data = read_data_reg;
+    assign read_data = i_mem_read ? read_data_reg : addr;
     assign debug_data = debug_data_reg;
     assign o_pc_source = (i_zero_alu & i_branch);
 

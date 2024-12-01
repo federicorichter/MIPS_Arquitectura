@@ -6,7 +6,8 @@ module instruction_fetch #(
     input wire i_clk,
     input wire i_rst,
     input wire i_stall,
-    input wire [SIZE-1:0] i_instruction_jump, //bit control jump
+    input wire [SIZE-1:0]i_instruction_jump, //bit control jump
+    input [SIZE-1:0] i_pc,
     input wire i_mux_selec, // selector del mux
     input wire i_inst_write_enable, // habilitación de escritura
     input wire [ADDR_WIDTH-1:0] i_write_addr, // dirección de escritura
@@ -26,7 +27,6 @@ module instruction_fetch #(
 
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
     reg [SIZE-1:0] o_instruction_reg;
-
     adder #(
         .SIZE(SIZE)
     ) adder (
@@ -50,7 +50,7 @@ module instruction_fetch #(
             pc <= 32'b0;
         else if (!i_stall && !i_inst_write_enable) begin
             if (pc_next < MAX_INSTRUCTION - 1) begin
-                pc <= pc_next;
+                pc <= i_pc;
             end else begin
                 pc <= 0;
             end

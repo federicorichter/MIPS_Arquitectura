@@ -28,7 +28,7 @@ module general_control #(
     localparam J_RET_DST = 14;
     localparam EQorNE = 15;
     localparam JUMP_SRC = 16;
-    localparam JUMP_OR_B = 17;
+    localparam JUMP_B = 17;
 
     reg [CONTROL_SIZE-1:0] control_reg;
     always @(*) begin
@@ -68,14 +68,14 @@ module general_control #(
             12'b001111??????: control_reg = 18'b000000011000000101; // LUI (load upper immediate)
             12'b001010??????: control_reg = 18'b000000101000000001; // SLTI (set less than immediate)
             12'b001011??????: control_reg = 18'b000000101000000101; // SLTIU (set less than immediate unsigned)
-            12'b000100??????: control_reg = 18'b101000000000000010; // BEQ (branch on equal)
-            12'b000101??????: control_reg = 18'b101000000000000010; // BNE (branch on not equal)
+            12'b000100??????: control_reg = 18'b001000000000000010; // BEQ (branch on equal)
+            12'b000101??????: control_reg = 18'b001000000000000000; // BNE (branch on not equal)
 
             // J-Type Instructions
             12'b000010??????: control_reg = 18'b110000000000000000; // J (jump)
-            12'b000011??????: control_reg = 18'b110000000000000001; // JAL (jump and link)
-            12'b000000001001: control_reg = 18'b110100000000000001; // JALR (jump and link register)
-            12'b000000001000: control_reg = 18'b110100000000000000; // JR (jump register)
+            12'b000011??????: control_reg = 18'b110100000000000001; // JAL (jump and link)
+            12'b000000001001: control_reg = 18'b100000000010000001; // JALR (jump and link register)
+            12'b000000001000: control_reg = 18'b100000000000000000; // JR (jump register)
 
             default: control_reg = 18'b000000000000000000; // Default control signals
             endcase

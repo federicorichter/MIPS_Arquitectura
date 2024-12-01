@@ -27,15 +27,6 @@ module instruction_fetch #(
 
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
     reg [SIZE-1:0] o_instruction_reg;
-    adder #(
-        .SIZE(SIZE)
-    ) adder (
-        .i_a(pc),
-        .i_b(1),
-        .o_result(adder_output),
-        .i_stall(i_stall || i_inst_write_enable) 
-    );
-
     mux #(
         .BITS_ENABLES(1),
         .BUS_SIZE(32)

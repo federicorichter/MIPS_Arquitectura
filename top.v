@@ -355,7 +355,7 @@ module mips #(
         .OP_SIZE(6),
         .ALU_OP_SIZE(3)
     ) EX (
-        .clk(clk),
+        .clk(clk_to_use),
         .i_is_unsigned(id_to_ex[15]),
         .i_shift_mux_a(id_to_ex[9]),
         .i_src_alu_b(id_to_ex[8]),

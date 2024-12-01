@@ -20,6 +20,7 @@ module debugger #(
     input wire [EX_MEM_SIZE-1:0] i_EX_MEM,
     input wire [MEM_WB_SIZE-1:0] i_MEM_WB,
     input wire [SIZE-1:0] i_debug_data, // Datos de depuración de la memoria de datos
+    input wire [SIZE-1:0] i_pc,
     output reg o_mode, // Modo de depuración: 0 = continuo, 1 = paso a paso
     output wire o_debug_clk,
     output reg [ADDR_WIDTH-1:0] o_debug_addr, // Dirección de depuración
@@ -91,6 +92,8 @@ module debugger #(
     localparam WAIT_UART_TX_FULL_DOWN_IDLE_ACK = 35; // Nuevo estado para esperar a que se envíe 'R'
     localparam WAIT_NO_TX_FULL = 36;
     localparam WAIT_TX_DOWN_IDLE_ACK = 37;
+    localparam RECEIVE_STOP_PC = 38;
+    localparam WAIT_RX_DOWN_STOP_PC = 39;
 
 
     reg [5:0] state, next_state;
@@ -100,6 +103,8 @@ module debugger #(
     reg [31:0] send_id_ex_counter;
     reg [31:0] send_ex_mem_counter;
     reg [31:0] send_mem_wb_counter;
+    reg [SIZE-1:0] stop_pc;
+    reg done_inst_write;
 
     // UART modules
     wire tick;
@@ -162,6 +167,9 @@ module debugger #(
             send_id_ex_counter <= 0;
             send_ex_mem_counter <= 0;
             send_mem_wb_counter <= 0;
+            stop_pc <= 0;
+            stop_pc <= instruction_count; // Valor por defecto
+            done_inst_write <= 0;
         end else begin
             state <= next_state;
             if (uart_rx_done) begin
@@ -206,7 +214,9 @@ module debugger #(
                         end
                         8'h0A: next_state = STEP_CLOCK; // Comando para avanzar un ciclo de reloj
                         8'h0B: next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS; // Comando para leer memoria de datos
+                        8'h0E: next_state = WAIT_RX_DOWN_STOP_PC; // Comando para recibir el valor de PC_STOP
                         8'h0D: begin // Comando para iniciar después de la escritura
+                            done_inst_write = 1;
                             o_inst_write_enable = 0;
                             next_state = WAIT_RX_DONE_DOWN_IDLE;
                         end
@@ -398,6 +408,8 @@ module debugger #(
                 if (uart_rx_done_reg) begin
                     if (byte_counter == 0) begin
                         instruction_count = uart_rx_data_reg; // Recibir la cantidad de instrucciones
+                        stop_pc = instruction_count; // Valor por defecto
+                        done_inst_write = 0;
                         byte_counter = byte_counter + 1;
                     end else begin
                         case (byte_counter)
@@ -435,12 +447,13 @@ module debugger #(
             RECEIVE_ADDRESS: begin
                 if (uart_rx_done_reg) begin
                     o_debug_addr = uart_rx_data_reg[ADDR_WIDTH-1:0]; // Actualizar dirección de depuración
-                    next_state = SEND_MEMORY_0;
-                    if (next_state == SEND_MEMORY_0) begin
-                        next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS;
-                    end else begin
-                        next_state = WAIT_NO_TX_FULL;
-                    end
+                    next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS;
+                end
+            end
+            RECEIVE_STOP_PC: begin
+                if (uart_rx_done_reg) begin
+                    stop_pc = uart_rx_data_reg; // Recibir el valor del PC en el que se va a frenar
+                    next_state = WAIT_NO_TX_FULL;
                 end
             end
             WAIT_EXECUTE: begin
@@ -458,6 +471,13 @@ module debugger #(
             end
             STEP_CLOCK: begin
                 next_state = IDLE;
+            end
+            WAIT_RX_DOWN_STOP_PC: begin
+                if (!uart_rx_done) begin
+                    next_state = RECEIVE_STOP_PC;
+                end else begin
+                    next_state = WAIT_RX_DOWN_STOP_PC;
+                end
             end
             WAIT_RX_DONE_DOWN_IDLE: begin
                 if (!uart_rx_done) begin
@@ -517,7 +537,7 @@ module debugger #(
             end
             WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS: begin
                 if (!uart_rx_done) begin
-                    next_state = RECEIVE_ADDRESS;
+                    next_state = SEND_MEMORY_0;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS;
                 end
@@ -544,7 +564,7 @@ module debugger #(
         end
     end
 
-    assign o_debug_clk = (o_mode) ? step_clk : i_clk;
+    assign o_debug_clk = (o_mode || ((i_pc >= stop_pc) && done_inst_write)) ? step_clk : i_clk;
 
     assign uart_tx_start = uart_tx_start_reg;
     //assign uart_tx_data = uart_tx_data_reg;

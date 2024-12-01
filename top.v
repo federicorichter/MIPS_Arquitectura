@@ -122,6 +122,7 @@ module mips #(
         .i_EX_MEM(ex_to_mem_reg),
         .i_MEM_WB(mem_to_wb_reg),
         .i_debug_data(debug_data),
+        .i_pc(pc_value),
         .o_mode(o_mode),
         .o_debug_clk(clk_to_use),
         .o_debug_addr(debug_addr),

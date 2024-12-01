@@ -46,6 +46,9 @@ module instruction_fetch #(
                 pc <= 0;
             end
         end
+        else if (i_inst_write_enable) begin
+            pc <= 0;
+        end
         else begin
             pc <= pc;
         end

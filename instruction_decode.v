@@ -46,11 +46,12 @@ module instruction_decode #(
 
     output wire [SIZE_REG_DIR-1:0] o_dir_rs,
     output wire [SIZE_REG_DIR-1:0] o_dir_rt,
-    output wire [SIZE_REG_DIR-1:0] o_dir_rd
-    //output wire [1:0] o_mux_a,
-    //output wire [1:0] o_mux_b
+    output wire [SIZE_REG_DIR-1:0] o_dir_rd,
+    output wire [SIZE*NUM_REGISTERS-1:0] o_registers_debug
+
 );
-    reg[SIZE-1:0] reg_jump;
+
+    reg [SIZE-1:0] reg_jump;
     wire [1:0] i_mux_A, i_mux_B;
     wire [SIZE-1:0] reg_a, reg_b, reg_a_value;
 
@@ -58,7 +59,7 @@ module instruction_decode #(
     forwarding_unit #(
         .TAM_BITS_FORWARD(2),
         .TAM_DIREC_REG(5)
-    ) forwarding_unit(
+    ) forwarding_unit (
         .i_rs_if_id(i_instruction[25:21]),
         .i_rt_if_id(i_instruction[20:16]),
         .i_rd_ex_mem(i_rd_ex_mem),
@@ -83,7 +84,7 @@ module instruction_decode #(
     mux #(
         .BITS_ENABLES(2),
         .BUS_SIZE(SIZE)
-    ) mux_A(
+    ) mux_A (
         .i_en(i_mux_A),
         .i_data({i_data_id_ex,i_data_mem_wb,i_data_ex_mem,reg_a}),
         .o_data(reg_a_value)
@@ -92,16 +93,16 @@ module instruction_decode #(
     mux #(
         .BITS_ENABLES(2),
         .BUS_SIZE(SIZE)
-    ) mux_B(
+    ) mux_B (
         .i_en(i_mux_B),
-        .i_data({i_data_id_ex,i_data_mem_wb,i_data_ex_mem,reg_b}),
+        .i_data({i_data_id_ex, i_data_mem_wb, i_data_ex_mem, reg_b}),
         .o_data(o_reg_B)
     );
 
-    register_bank#(
+    register_bank #(
         .SIZE(SIZE),
         .NUM_REGISTERS(NUM_REGISTERS)
-    ) registers (
+    ) registers_inst (
         .clk(clk),
         .rst(rst),
         .i_write_enable(i_write_enable),
@@ -110,15 +111,15 @@ module instruction_decode #(
         .i_w_dir(i_w_dir),
         .i_w_data(i_w_data),
         .o_reg_A(reg_a),
-        .o_reg_B(reg_b)
+        .o_reg_B(reg_b),
+        .o_registers_debug(o_registers_debug)
     );
 
-    sing_extender sign_extender(
+    sing_extender sign_extender (
         i_instruction[15:0],
         o_immediate
     );
 
-    //assign o_immediate = reg_jump;
     assign o_op = i_instruction[31:26];
     assign o_dir_rd = i_instruction[15:11];
     assign o_dir_rs =   i_instruction[25:21]; 
@@ -126,6 +127,5 @@ module instruction_decode #(
     assign o_reg_A_branch = reg_a;
     assign o_reg_B_branch = reg_b;
     assign o_jmp_direc = i_instruction[25:0];
-
 
 endmodule

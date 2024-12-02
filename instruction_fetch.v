@@ -1,6 +1,7 @@
 module instruction_fetch #(
     parameter SIZE = 32,
-    parameter MAX_INSTRUCTION = 64 // Asegúrate de que este parámetro esté correctamente definido
+    parameter MAX_INSTRUCTION = 64, // Asegúrate de que este parámetro esté correctamente definido
+    parameter ADDR_WIDTH = $clog2(MAX_INSTRUCTION)
 )
 (
     input wire i_clk,
@@ -16,14 +17,13 @@ module instruction_fetch #(
     output wire [SIZE-1:0] o_adder,
     output wire o_writing_instruction_mem // Señal de control para indicar escritura en memoria de instrucciones
 
-);
-    localparam ADDR_WIDTH = $clog2(MAX_INSTRUCTION);
+); 
 
     wire [SIZE-1:0] adder_output;
     reg [SIZE-1:0] pc;
     wire [(SIZE * 2)-1:0] input_mux;
     wire [SIZE-1:0] pc_next;
-
+    integer i;
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
     reg [SIZE-1:0] o_instruction_reg;
     mux #(
@@ -56,7 +56,7 @@ module instruction_fetch #(
 */
     always @(posedge i_clk) begin
         if (i_rst) begin
-            for (integer i = 0; i < MAX_INSTRUCTION; i = i + 1) begin
+            for (i = 0; i < MAX_INSTRUCTION; i = i + 1) begin
                 instruction_mem[i] <= 32'b0;
             end
             pc <= 0;

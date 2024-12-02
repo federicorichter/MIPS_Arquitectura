@@ -170,12 +170,10 @@ module tb_top;
      
         //send_uart_command(8'h0E); 
 
-        //send_uart_command(8'h07); // Command to start program
-        wait_for_ready(); // Wait for 'R'
-        
+        //send_uart_command(8'h07); // Command to start program        
         send_uart_command(8'h0D); // Command to start program
         
-        #1000000;
+        #10000000;
         send_uart_command(8'h0B);
         send_uart_command(8'h02);
         receive_data_from_uart(4);

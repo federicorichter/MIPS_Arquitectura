@@ -28,10 +28,6 @@ module data_memory #(
 
     always @(negedge clk) begin
         if (rst) begin
-            // Inicializa toda la memoria a cero
-            for (i = 0; i < MEM_SIZE; i = i + 1) begin
-                mem[i] <= 8'b0;
-            end
             read_data_reg <= 32'b0;
         end else if (i_mem_read) begin
             // Leer 32 bits (4 bytes) desde la memoria con enmascaramiento
@@ -45,7 +41,12 @@ module data_memory #(
     end
 
     always @(posedge clk) begin
-        if (i_mem_write && !rst) begin
+        if (rst) begin
+            // Inicializa toda la memoria a cero
+            for (i = 0; i < MEM_SIZE; i = i + 1) begin
+                mem[i] <= 8'b0;
+            end
+        end else if (i_mem_write && !rst) begin
             // Escribir 32 bits (4 bytes) en la memoria con enmascaramiento
             case ({i_mask_1, i_mask_2})
                 2'b00: begin

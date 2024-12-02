@@ -24,9 +24,9 @@ module debugger #(
     output reg o_mode, // Modo de depuración: 0 = continuo, 1 = paso a paso
     output wire o_debug_clk,
     output reg [ADDR_WIDTH-1:0] o_debug_addr, // Dirección de depuración
-    output reg [ADDR_WIDTH-1:0] o_write_addr, // Dirección de escritura
-    output reg o_inst_write_enable,
-    output reg [SIZE-1:0] o_write_data, // datos de escritura
+    output reg [ADDR_WIDTH-1:0] o_write_addr_reg, // Dirección de escritura
+    output reg o_inst_write_enable_reg,
+    output reg [SIZE-1:0] o_write_data_reg, // datos de escritura
     output wire uart_tx_start,
     output wire uart_tx_full,
     output wire uart_rx_empty,
@@ -34,25 +34,29 @@ module debugger #(
 );
 
     // UART signals
-    reg uart_tx_start_reg;
+    reg uart_tx_start_reg = 0;
     reg uart_rx_done_reg;
     reg original_mode; // Para almacenar el modo original antes de la escritura
-    reg [7:0] uart_rx_data_reg;
-    reg [7:0] uart_tx_data_reg;
-    reg [31:0] instruction_buffer; // Buffer para acumular los bytes de la instrucción
+    reg [7:0] uart_rx_data_reg = 0;
+    reg [7:0] uart_tx_data_reg = 0;
+    reg [31:0] instruction_buffer = 0; // Buffer para acumular los bytes de la instrucción
     reg [((SIZE*NUM_REGISTERS + 7) / 8) * 8 - 1:0] padded_registers;
     reg [((IF_ID_SIZE + 7) / 8) * 8 - 1:0] padded_if_id;
     reg [((ID_EX_SIZE + 7) / 8) * 8 - 1:0] padded_id_ex;
     reg [((EX_MEM_SIZE + 7) / 8) * 8 - 1:0] padded_ex_mem;
     reg [((MEM_WB_SIZE + 7) / 8) * 8 - 1:0] padded_mem_wb;
-    integer instruction_count; // Cantidad de instrucciones a recibir
-    integer instruction_counter; // Contador de instrucciones recibidas
-    integer byte_counter; // Contador de bytes recibidos
+    integer instruction_count = 0; // Cantidad de instrucciones a recibir
+    integer instruction_counter = 0; // Contador de instrucciones recibidas
+    integer byte_counter = 0; // Contador de bytes recibidos
     wire [7:0] uart_rx_data;
     wire [7:0] uart_tx_data;
     wire uart_rx_done; 
     reg [IF_ID_SIZE-1:0] i_IF_ID_REG;
     reg send_idle_ack_flag;
+    reg [ADDR_WIDTH-1:0] o_write_addr = 0; // Dirección de escritura
+    reg [SIZE-1:0] o_write_data = 0; // datos de escritura
+    reg o_inst_write_enable = 0;
+    
 
     // State machine states
     localparam IDLE = 0;
@@ -99,14 +103,14 @@ module debugger #(
 
     reg [5:0] state, next_state;
     reg [31:0] i;
-    reg [31:0] send_registers_counter;
-    reg [31:0] send_if_id_counter;
-    reg [31:0] send_id_ex_counter;
-    reg [31:0] send_ex_mem_counter;
-    reg [31:0] send_mem_wb_counter;
-    reg [31:0] send_memory_counter;
-    reg [SIZE-1:0] stop_pc;
-    reg done_inst_write;
+    reg [31:0] send_registers_counter = 0;
+    reg [31:0] send_if_id_counter = 0;
+    reg [31:0] send_id_ex_counter = 0;
+    reg [31:0] send_ex_mem_counter = 0;
+    reg [31:0] send_mem_wb_counter = 0;
+    reg [31:0] send_memory_counter = 0;
+    reg [SIZE-1:0] stop_pc = 0;
+    reg done_inst_write = 0;
 
     // UART modules
     wire tick;
@@ -145,6 +149,12 @@ module debugger #(
         .started()
     );
 
+    always @(*) begin
+        o_write_addr_reg = o_write_addr;
+        o_write_data_reg = o_write_data;
+        o_inst_write_enable_reg = o_inst_write_enable;
+    end
+
     always @(posedge uart_rx_done) begin
         uart_rx_data_reg <= uart_rx_data;
         uart_rx_done_reg <= 1;
@@ -153,25 +163,6 @@ module debugger #(
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             state <= IDLE;
-            uart_rx_done_reg <= 0;
-            uart_tx_data_reg <= 0;
-            byte_counter <= 0;
-            instruction_buffer <= 0;
-            instruction_count <= 0;
-            instruction_counter <= 0;
-            o_write_addr <= 0;
-            o_write_data <= 0;
-            o_inst_write_enable <= 0;
-            uart_tx_start_reg <= 0;
-            i <= 0;
-            send_registers_counter <= 0;
-            send_if_id_counter <= 0;
-            send_id_ex_counter <= 0;
-            send_ex_mem_counter <= 0;
-            send_mem_wb_counter <= 0;
-            stop_pc <= 0;
-            stop_pc <= instruction_count; // Valor por defecto
-            done_inst_write <= 0;
         end else begin
             state <= next_state;
             if (uart_rx_done) begin

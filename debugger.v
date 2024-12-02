@@ -61,7 +61,7 @@ module debugger #(
     localparam SEND_ID_EX = 3;
     localparam SEND_EX_MEM = 4;
     localparam SEND_MEM_WB = 5;
-    localparam SEND_MEMORY_0 = 6;
+    localparam SEND_MEMORY = 6;
     localparam SEND_MEMORY_1 = 7;
     localparam SEND_MEMORY_2 = 8;
     localparam SEND_MEMORY_3 = 9;
@@ -75,7 +75,7 @@ module debugger #(
     localparam WAIT_UART_TX_FULL_DOWN_SEND_ID_EX = 17;
     localparam WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM = 18;
     localparam WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB = 19;
-    localparam WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0 = 20;
+    localparam WAIT_UART_TX_FULL_DOWN_SEND_MEMORY = 20;
     localparam WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_1 = 21;
     localparam WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_2 = 22;
     localparam WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_3 = 23;
@@ -104,6 +104,7 @@ module debugger #(
     reg [31:0] send_id_ex_counter;
     reg [31:0] send_ex_mem_counter;
     reg [31:0] send_mem_wb_counter;
+    reg [31:0] send_memory_counter;
     reg [SIZE-1:0] stop_pc;
     reg done_inst_write;
 
@@ -192,6 +193,7 @@ module debugger #(
                 send_id_ex_counter = 0;
                 send_ex_mem_counter = 0;
                 send_mem_wb_counter = 0;
+                send_memory_counter = 0;
                 if (uart_rx_done_reg) begin
                     case (uart_rx_data_reg)
                         8'h01: next_state = WAIT_RX_DONE_DOWN_SEND_REGISTERS;
@@ -350,60 +352,21 @@ module debugger #(
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB;
                 end
             end
-            
-            SEND_MEMORY_0: begin
-                // Send memory data through UART
-                uart_tx_data_reg = i_debug_data[7:0];
-                uart_tx_start_reg = 1;
-                o_clk_mem_read = 0;
-                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0;
-            end
-            WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0: begin
-                if (!uart_tx_full) begin
-                    next_state = SEND_MEMORY_0;
-                end else begin
-                    next_state = SEND_MEMORY_1;
-                end
-            end
-            
-            SEND_MEMORY_1: begin
-                uart_tx_data_reg = i_debug_data[15:8];
-                uart_tx_start_reg = 1;
-                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_1;
-            end
-            WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_1: begin
-                if (!uart_tx_full) begin
-                    next_state = SEND_MEMORY_1;
-                end else begin
-                    next_state = SEND_MEMORY_2;
-                end
-            end
-            
-            SEND_MEMORY_2: begin
-                uart_tx_data_reg = i_debug_data[23:16];
-                uart_tx_start_reg = 1;
-                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_2;
-            end
-
-            WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_2: begin
-                if (!uart_tx_full) begin
-                    next_state = SEND_MEMORY_2;
-                end else begin
-                    next_state = SEND_MEMORY_3;
-                end
-            end
-            
-            SEND_MEMORY_3: begin
-                uart_tx_data_reg = i_debug_data[31:24];
-                uart_tx_start_reg = 1;
-                next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_3;
-            end
-
-            WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_3: begin
-                if (!uart_tx_full) begin
-                    next_state = SEND_MEMORY_3;
+            SEND_MEMORY: begin
+                if (send_memory_counter < 32) begin
+                    uart_tx_data_reg = i_debug_data[send_memory_counter +: 8];
+                    uart_tx_start_reg = 1;
+                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY;
                 end else begin
                     next_state = WAIT_NO_TX_FULL;
+                end
+            end
+            WAIT_UART_TX_FULL_DOWN_SEND_MEMORY: begin
+                if (uart_tx_full) begin
+                    send_memory_counter = send_memory_counter + 8;
+                    next_state = SEND_MEMORY;
+                end else begin
+                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY;
                 end
             end
             LOAD_PROGRAM: begin
@@ -526,7 +489,7 @@ module debugger #(
             end
             WAIT_RX_DONE_DOWN_SEND_MEMORY: begin
                 if (!uart_rx_done) begin
-                    next_state = SEND_MEMORY_0;
+                    next_state = SEND_MEMORY;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_SEND_MEMORY;
                 end

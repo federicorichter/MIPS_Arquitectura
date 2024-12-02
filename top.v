@@ -3,7 +3,7 @@ module mips #(
     parameter SIZE_OP = 6,
     parameter CONTROL_SIZE = 18,
     parameter SIZE_REG_DIR = 5,
-    parameter IF_ID_SIZE = 32,
+    parameter IF_ID_SIZE = 64,
     parameter ID_EX_SIZE = 129,
     parameter EX_MEM_SIZE = 77,
     parameter MEM_WB_SIZE = 71,
@@ -50,16 +50,12 @@ module mips #(
     wire [SIZE-1:0] immediate;
     wire [4:0] rs_dir, rd_dir, rt_dir;
     wire [CONTROL_SIZE-1:0] control_signals;
-    wire [63:0] if_to_id;
-    wire [128:0] id_to_ex;
     wire [4:0]reg_address;
     wire [SIZE-1:0] reg_alu_res;
     wire [SIZE-1:0] reg_mem_data;
     wire zero_alu;
-    wire [77:0] ex_to_mem;
     wire [SIZE-1:0] mem_data;
     wire pc_source;
-    wire [71:0] mem_to_wb;
     wire [SIZE-1:0] data_write_reg;
     wire [4:0] address_write_reg;
     wire [1:0] mux_a_ex, mux_b_ex;
@@ -127,8 +123,8 @@ module mips #(
         .o_mode(o_mode),
         .o_debug_clk(clk_to_use),
         .o_debug_addr(debug_addr),
-        .o_inst_write_enable(i_inst_write_enable),
-        .o_write_addr(i_write_addr),
+        .o_inst_write_enable_reg(i_inst_write_enable),
+        .o_write_addr_reg(i_write_addr),
         .o_write_data(i_write_data),
         .o_clk_mem_read(clk_mem_read),
         .i_registers_debug(i_registers_debug),

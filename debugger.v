@@ -447,7 +447,7 @@ module debugger #(
             RECEIVE_ADDRESS: begin
                 if (uart_rx_done_reg) begin
                     o_debug_addr = uart_rx_data_reg[ADDR_WIDTH-1:0]; // Actualizar dirección de depuración
-                    next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS;
+                    next_state = WAIT_RX_DONE_DOWN_SEND_MEMORY;
                 end
             end
             RECEIVE_STOP_PC: begin
@@ -537,7 +537,7 @@ module debugger #(
             end
             WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS: begin
                 if (!uart_rx_done) begin
-                    next_state = SEND_MEMORY_0;
+                    next_state = RECEIVE_ADDRESS;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS;
                 end

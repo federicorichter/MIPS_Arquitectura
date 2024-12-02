@@ -180,7 +180,6 @@ module mips #(
         .i_clk(clk_to_use),
         .i_rst(i_rst),
         .i_stall(i_stall || o_writing_instruction_mem || hazard_output), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
-       // .i_instruction_jump(), //bit control jump
         .i_pc(pc_if),
         .i_mux_selec(pc_source), // selector del mux
         .o_instruction(instruction), // salida:instruccion

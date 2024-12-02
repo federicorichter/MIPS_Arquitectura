@@ -6,7 +6,6 @@ module instruction_fetch #(
     input wire i_clk,
     input wire i_rst,
     input wire i_stall,
-    input wire [SIZE-1:0]i_instruction_jump, //bit control jump
     input [SIZE-1:0] i_pc,
     input wire i_mux_selec, // selector del mux
     input wire i_inst_write_enable, // habilitación de escritura
@@ -36,7 +35,7 @@ module instruction_fetch #(
         .o_data(pc_next)
     );
 
-    always @(negedge i_clk) begin
+    /*always @(negedge i_clk) begin
         if (i_rst) 
             pc <= 32'b0;
         else if (!i_stall && !i_inst_write_enable) begin
@@ -44,6 +43,7 @@ module instruction_fetch #(
                 pc <= i_pc;
             end else begin
                 pc <= 0;
+                o_instruction_reg <= instruction_mem[pc];
             end
         end
         else if (i_inst_write_enable) begin
@@ -53,26 +53,32 @@ module instruction_fetch #(
             pc <= pc;
         end
     end
-
+*/
     always @(posedge i_clk) begin
         if (i_rst) begin
             for (integer i = 0; i < MAX_INSTRUCTION; i = i + 1) begin
                 instruction_mem[i] <= 32'b0;
             end
+            pc <= 0;
         end
-        if (i_inst_write_enable) begin
-            //pc <= 0;
+        else if (i_inst_write_enable) begin
+            pc <= 0;
             instruction_mem[i_write_addr] <= i_write_data;
         end
         else if (!i_stall && !i_inst_write_enable) begin
-            o_instruction_reg <= instruction_mem[pc];
+            if (pc < MAX_INSTRUCTION - 1) begin
+                pc <= i_pc;
+            end else begin
+                pc <= 0;
+                o_instruction_reg <= instruction_mem[pc];
+            end
         end
     end
 
-    assign input_mux = {i_instruction_jump, adder_output};
+    assign input_mux = {32'b0, adder_output};
     assign o_pc = pc;
-    assign o_instruction = o_instruction_reg;
-    //assign o_instruction = (i_inst_write_enable || i_rst) ? 32'b0 : instruction_mem[pc];
+    //assign o_instruction = o_instruction_reg;
+    assign o_instruction = (i_inst_write_enable || i_rst) ? 32'b0 : instruction_mem[pc];
     assign o_adder = adder_output;
     assign o_writing_instruction_mem = i_inst_write_enable;
 

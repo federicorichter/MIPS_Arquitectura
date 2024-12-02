@@ -138,21 +138,32 @@ module tb_top;
         send_uart_data(32'b00111100000011110000000010010100, 32); // R15 = 300
         send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
         send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
-        send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
-        
-        /*
-        send_uart_data(32'b00111100000000010000000000000111,32); // LUI R1, 7 => parece q anda
-        send_uart_data(32'b00111100000000010000000000000110,32); // LUI R2, 5
-        send_uart_data(32'b00111100000000010000000000000110,32); // LUI R2, 5
-        send_uart_data(32'b00111100000000010000000000000110,32); // LUI R1, 6 
-        send_uart_data(32'b00000000001000000000000000001000,32); // JR, R1
+        send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3*/
+
+        /*send_uart_data(32'b00111100000000010000000000001000,32); // LUI R1, 8 => parece q anda
+        send_uart_data(32'b00111100000000110000000000000110,32); // LUI R3, 6
+        send_uart_data(32'b00111100000000110000000000000110,32); // LUI R3, 6
+        send_uart_data(32'b00111100000000110000000000000110,32); // LUI R3, 6 
+        send_uart_data(32'b00000000001000000100100000001001,32); // JALR, R1, R9
         send_uart_data(32'b00111100000000110000000000000011,32); // LUI R3, 3
         send_uart_data(32'b00111100000000110000000000001111,32); // LUI R3, 15
         send_uart_data(32'b00111100000000110000000000001101,32); // LUI R3, 13 -> Salta aca
         send_uart_data(32'b00111100000000110000000000000101,32); // LUI R3, 5 
         send_uart_data(32'b00111100000000110000000000000100,32); // LUI R3, 4
-        send_uart_data(32'b00111100000000110000000000000110, 32); // LUI R3, 6
-        */
+        send_uart_data(32'b00111100000000110000000000000110, 32); // LUI R3, 6*/
+
+        send_uart_data(32'b00111100000000010000000000000001, 32); // LUI R1, 1
+        send_uart_data(32'b00111100000000110000000000000011, 32); // LUI R3, 3
+        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP 
+        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
+        send_uart_data(32'b10100100001000010000000000000001, 32); // SH, R1 -> MEM[1]
+        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
+        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
+        send_uart_data(32'b10000100001001010000000000000001, 32); // LH, R5 <- MEM[1]
+        send_uart_data(32'b00000000101000110011100000100001, 32); // R7 = R5 + R3 => Anda
+        send_uart_data(32'b00111100000010110000000000000011, 32); // NOP
+        send_uart_data( 32'b00111100000010110000000000000001, 32); // NOP
+        send_uart_data( 32'b00111100000010110000000000000001, 32); // NOP 
 
         send_uart_command(8'h11); // Command to set step-by-step mode
         wait_for_ready(); // Wait for 'R'
@@ -163,6 +174,11 @@ module tb_top;
         wait_for_ready(); // Wait for 'R'
         
         send_uart_command(8'h0D); // Command to start program
+        
+        #1000000;
+        send_uart_command(8'h0B);
+        send_uart_command(8'h01);
+        
         //send_uart_command(8'h09); // Command to set step-by-step mode
 
 

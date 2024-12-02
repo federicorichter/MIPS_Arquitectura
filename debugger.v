@@ -353,6 +353,7 @@ module debugger #(
                 end
             end
             SEND_MEMORY: begin
+                o_clk_mem_read = 0;
                 if (send_memory_counter < 32) begin
                     uart_tx_data_reg = i_debug_data[send_memory_counter +: 8];
                     uart_tx_start_reg = 1;

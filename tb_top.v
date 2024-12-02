@@ -179,6 +179,7 @@ module tb_top;
         send_uart_command(8'h0B);
         send_uart_command(8'h02);
         receive_data_from_uart(4);
+        wait_for_ready();
         
         //send_uart_command(8'h09); // Command to set step-by-step mode
 

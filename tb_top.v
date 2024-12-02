@@ -122,9 +122,9 @@ module tb_top;
         send_uart_command(8'h08); // Command to set continuous mode
         // Load a short test program
         send_uart_command(8'h07); // Command to start loading program
-        send_uart_command(8'd15); // Cantidad de instrucciones a cargar
+        send_uart_command(8'd11); // Cantidad de instrucciones a cargar
         // Send the instructions
-        send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
+        /*send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
         send_uart_data(32'b00111100000000100000000000000001, 32); // R2 = 1
         send_uart_data(32'b00111100000000110000000000001001, 32); // R3 = 9
         send_uart_data(32'b00111100000001000000000000000111, 32); // R4 = 7
@@ -168,16 +168,17 @@ module tb_top;
         send_uart_command(8'h11); // Command to set step-by-step mode
         wait_for_ready(); // Wait for 'R'
      
-        send_uart_command(8'h0E); 
+        //send_uart_command(8'h0E); 
 
-        send_uart_command(8'h07); // Command to start program
+        //send_uart_command(8'h07); // Command to start program
         wait_for_ready(); // Wait for 'R'
         
         send_uart_command(8'h0D); // Command to start program
         
         #1000000;
         send_uart_command(8'h0B);
-        send_uart_command(8'h01);
+        send_uart_command(8'h02);
+        receive_data_from_uart(4);
         
         //send_uart_command(8'h09); // Command to set step-by-step mode
 

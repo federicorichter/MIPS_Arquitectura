@@ -5,6 +5,7 @@ module data_memory #(
 )(
     input wire clk,
     input wire rst, // Señal de reset
+    input wire i_clk_mem_read,
     input wire i_mem_write,  // Señal de habilitación de escritura
     input wire i_mem_read,  // Señal de habilitación de lectura
     input wire i_zero_alu,
@@ -69,7 +70,7 @@ module data_memory #(
         end
     end
 
-    always @(posedge clk) begin
+    always @(negedge i_clk_mem_read) begin
         // Leer 32 bits (4 bytes) desde la memoria para depuración
         debug_data_reg <= {mem[debug_addr+3], mem[debug_addr+2], mem[debug_addr+1], mem[debug_addr]};
     end

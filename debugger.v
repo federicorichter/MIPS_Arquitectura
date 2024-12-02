@@ -29,7 +29,8 @@ module debugger #(
     output reg [SIZE-1:0] o_write_data, // datos de escritura
     output wire uart_tx_start,
     output wire uart_tx_full,
-    output wire uart_rx_empty
+    output wire uart_rx_empty,
+    output reg o_clk_mem_read
 );
 
     // UART signals
@@ -354,6 +355,7 @@ module debugger #(
                 // Send memory data through UART
                 uart_tx_data_reg = i_debug_data[7:0];
                 uart_tx_start_reg = 1;
+                o_clk_mem_read = 0;
                 next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0;
             end
             WAIT_UART_TX_FULL_DOWN_SEND_MEMORY_0: begin
@@ -408,7 +410,7 @@ module debugger #(
                 if (uart_rx_done_reg) begin
                     if (byte_counter == 0) begin
                         instruction_count = uart_rx_data_reg; // Recibir la cantidad de instrucciones
-                        stop_pc = instruction_count; // Valor por defecto
+                        stop_pc = instruction_count + 5; // Valor por defecto
                         done_inst_write = 0;
                         byte_counter = byte_counter + 1;
                     end else begin
@@ -447,6 +449,7 @@ module debugger #(
             RECEIVE_ADDRESS: begin
                 if (uart_rx_done_reg) begin
                     o_debug_addr = uart_rx_data_reg[ADDR_WIDTH-1:0]; // Actualizar dirección de depuración
+                    o_clk_mem_read = 1;
                     next_state = WAIT_RX_DONE_DOWN_SEND_MEMORY;
                 end
             end

@@ -70,7 +70,7 @@ module instruction_fetch #(
                 pc <= i_pc;
             end else begin
                 pc <= 0;
-                o_instruction_reg <= instruction_mem[pc];
+                //o_instruction_reg <= instruction_mem[pc];
             end
         end
     end

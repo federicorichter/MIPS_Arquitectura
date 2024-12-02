@@ -7,10 +7,10 @@ module mips #(
     parameter ID_EX_SIZE = 129,
     parameter EX_MEM_SIZE = 77,
     parameter MEM_WB_SIZE = 71,
-    parameter ADDR_WIDTH = 32,
     parameter MAX_INSTRUCTION = 64, // Define MAX_INSTRUCTION
     parameter NUM_REGISTERS = 32,
-    parameter MEM_SIZE = 64 // Define MEM_SIZE
+    parameter MEM_SIZE = 64, // Define MEM_SIZE
+    parameter ADDR_WIDTH = $clog2(MEM_SIZE)
 )(
     input wire i_rst,
     input wire i_stall,
@@ -85,6 +85,7 @@ module mips #(
     wire [7:0] uart_rx_data, uart_tx_data;
     wire baud_tick;
     wire clk_to_use;
+    wire clk_mem_read;
 
 
     always @(posedge i_clk) begin
@@ -129,6 +130,7 @@ module mips #(
         .o_inst_write_enable(i_inst_write_enable),
         .o_write_addr(i_write_addr),
         .o_write_data(i_write_data),
+        .o_clk_mem_read(clk_mem_read),
         .i_registers_debug(i_registers_debug),
         .uart_tx_start(uart_tx_start),
         .uart_tx_full(uart_tx_full),
@@ -403,13 +405,14 @@ module mips #(
 
     data_memory #(
         .DATA_WIDTH(SIZE),
-        .MEM_SIZE(1024)
+        .MEM_SIZE(MEM_SIZE)
     ) MEM (
         .clk(clk_to_use),
         .rst(i_rst),
         .i_mem_write(ex_to_mem[71]),
         .i_mem_read(ex_to_mem[70]),
         .i_zero_alu(ex_to_mem[69]),
+        .i_clk_mem_read(clk_mem_read),
         .i_branch(ex_to_mem[72]),
         .addr(ex_to_mem[68:37]),
         .write_data(ex_to_mem[36:5]),

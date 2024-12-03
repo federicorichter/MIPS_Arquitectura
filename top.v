@@ -5,8 +5,8 @@ module mips #(
     parameter SIZE_REG_DIR = 5,
     parameter IF_ID_SIZE = 64,
     parameter ID_EX_SIZE = 129,
-    parameter EX_MEM_SIZE = 77,
-    parameter MEM_WB_SIZE = 71,
+    parameter EX_MEM_SIZE = 78,
+    parameter MEM_WB_SIZE = 72,
     parameter MAX_INSTRUCTION = 64, // Define MAX_INSTRUCTION
     parameter NUM_REGISTERS = 32,
     parameter MEM_SIZE = 64, // Define MEM_SIZE
@@ -16,9 +16,9 @@ module mips #(
     input wire i_stall,
     input wire i_uart_rx,
     output wire o_uart_tx,
-    input wire i_clk,
-    output wire rx_done_tick, // Añadir señal de tick de recepción
-    output wire tx_done_tick  // Añadir señal de tick de transmisión
+    input wire i_clk
+    //output wire rx_done_tick, // Añadir señal de tick de recepción
+    //output wire tx_done_tick  // Añadir señal de tick de transmisión
 );  
 
     //Control Bits
@@ -82,6 +82,20 @@ module mips #(
     wire baud_tick;
     wire clk_to_use;
     wire clk_mem_read;
+    wire hazard_output;
+    wire [SIZE-1:0] reg_a_conditional, reg_b_conditional;
+    wire reg_equal_conditional;
+    wire res_branch;
+    wire pc_plus_immediate_sel;
+    wire [SIZE-1:0] pc_if;
+    wire [SIZE-1:0] o_mux_pc_immed;
+    wire [SIZE-1:0] pc_plus;
+    wire [25:0] o_jmp_direc;
+    wire [SIZE-1:0] o_mux_dir;
+    wire [SIZE-1:0] pc_value;
+    wire [SIZE-1:0] immediate_plus_pc;
+    wire if_flush;
+    wire [SIZE-1:0] pc_plus_4;
 
 
     always @(posedge i_clk) begin
@@ -129,24 +143,9 @@ module mips #(
         .o_clk_mem_read(clk_mem_read),
         .i_registers_debug(i_registers_debug),
         .uart_tx_start(uart_tx_start),
-        .uart_tx_full(uart_tx_full),
-        .uart_rx_empty(uart_rx_empty)
+        .uart_tx_full(uart_tx_full)
+        //.uart_rx_empty(uart_rx_empty)
     );
-    
-    wire hazard_output;
-    wire [SIZE-1:0] reg_a_conditional, reg_b_conditional;
-    wire reg_equal_conditional;
-    wire res_branch;
-    wire pc_plus_immediate_sel;
-    wire [SIZE-1:0] pc_if;
-    wire [SIZE-1:0] o_mux_pc_immed;
-    wire [SIZE-1:0] pc_plus;
-    wire [25:0] o_jmp_direc;
-    wire [SIZE-1:0] o_mux_dir;
-    wire [SIZE-1:0] pc_value;
-    wire [SIZE-1:0] immediate_plus_pc;
-    wire if_flush;
-    wire [SIZE-1:0] pc_plus_4;
 
     hazard_detection #(
         .SIZE_REG_DIR(5),
@@ -182,7 +181,6 @@ module mips #(
         .i_mux_selec(pc_source), // selector del mux
         .o_instruction(instruction), // salida:instruccion
         .o_pc(pc_value), // salida: contador de programa
-        .o_adder(instruction_plus4),
         .i_inst_write_enable(i_inst_write_enable), // habilitación de escritura
         .i_write_addr(i_write_addr), // dirección de escritura
         .i_write_data(i_write_data), // datos de escritura

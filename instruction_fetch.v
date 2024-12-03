@@ -14,26 +14,25 @@ module instruction_fetch #(
     input wire [SIZE-1:0] i_write_data, // datos de escritura
     output wire [SIZE-1:0] o_instruction, // salida:instruccion
     output wire [SIZE-1:0] o_pc,
-    output wire [SIZE-1:0] o_adder,
     output wire o_writing_instruction_mem // Señal de control para indicar escritura en memoria de instrucciones
 
 ); 
 
-    wire [SIZE-1:0] adder_output;
+    //wire [SIZE-1:0] adder_output;
     reg [SIZE-1:0] pc;
-    wire [(SIZE * 2)-1:0] input_mux;
-    wire [SIZE-1:0] pc_next;
+    //wire [(SIZE * 2)-1:0] input_mux;
+    //wire [SIZE-1:0] pc_next;
     integer i;
     reg [SIZE-1:0] instruction_mem [MAX_INSTRUCTION-1:0];  // Declarar como "reg"
     reg [SIZE-1:0] o_instruction_reg;
-    mux #(
+    /*mux #(
         .BITS_ENABLES(1),
         .BUS_SIZE(32)
     ) mux (
         .i_en(i_mux_selec),
         .i_data(input_mux),
         .o_data(pc_next)
-    );
+    );*/
 
     /*always @(negedge i_clk) begin
         if (i_rst) 
@@ -75,11 +74,11 @@ module instruction_fetch #(
         end
     end
 
-    assign input_mux = {32'b0, adder_output};
+    //assign input_mux = {32'b0, adder_output};
     assign o_pc = pc;
     //assign o_instruction = o_instruction_reg;
     assign o_instruction = (i_inst_write_enable || i_rst) ? 32'b0 : instruction_mem[pc];
-    assign o_adder = adder_output;
+   //assign o_adder = adder_output;
     assign o_writing_instruction_mem = i_inst_write_enable;
 
 endmodule

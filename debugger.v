@@ -29,7 +29,7 @@ module debugger #(
     output reg [SIZE-1:0] o_write_data_reg, // datos de escritura
     output wire uart_tx_start,
     output wire uart_tx_full,
-    output wire uart_rx_empty,
+    //output wire uart_rx_empty,
     output reg o_clk_mem_read
 );
 
@@ -159,18 +159,18 @@ module debugger #(
         uart_rx_data_reg <= uart_rx_data;
         uart_rx_done_reg <= 1;
     end
+    always @(negedge uart_rx_done) begin
+        //uart_rx_data_reg <= uart_rx_data;
+        uart_rx_done_reg <= 0;
+    end
 
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             state <= IDLE;
+            //uart_rx_done_reg <= 0;
         end else begin
             state <= next_state;
-            if (uart_rx_done) begin
-                uart_rx_data_reg <= uart_rx_data;
-                uart_rx_done_reg <= 1;
-            end else begin
-                uart_rx_done_reg <= 0;
-            end
+                //uart_rx_done_reg <= 0;
         end
     end
 

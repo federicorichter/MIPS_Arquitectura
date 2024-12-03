@@ -43,10 +43,10 @@ module tb_top;
         .SIZE(SIZE),
         .SIZE_OP(SIZE_OP),
         .CONTROL_SIZE(CONTROL_SIZE),
-        .IF_ID_SIZE(IF_ID_SIZE),
-        .ID_EX_SIZE(ID_EX_SIZE),
-        .EX_MEM_SIZE(EX_MEM_SIZE),
-        .MEM_WB_SIZE(MEM_WB_SIZE),
+        //.IF_ID_SIZE(IF_ID_SIZE),
+        //.ID_EX_SIZE(ID_EX_SIZE),
+        //.EX_MEM_SIZE(EX_MEM_SIZE),
+        //.MEM_WB_SIZE(MEM_WB_SIZE),
         .ADDR_WIDTH(ADDR_WIDTH),
         .MAX_INSTRUCTION(MAX_INSTRUCTION),
         .NUM_REGISTERS(NUM_REGISTERS),
@@ -56,9 +56,9 @@ module tb_top;
         .i_stall(1'b0),
         .i_uart_rx(i_uart_rx),
         .o_uart_tx(o_uart_tx),
-        .i_clk(i_clk),
-        .rx_done_tick(uart_rx_done),
-        .tx_done_tick(uart_tx_start)
+        .i_clk(i_clk)
+        //.rx_done_tick(uart_rx_done),
+        //.tx_done_tick(uart_tx_start)
     );
 
     // Instantiate the second UART module (PC simulation)

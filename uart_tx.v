@@ -1,31 +1,29 @@
 //Listing 8.3
 module uart_tx
    #(
-     parameter N = 8,     
-    parameter COUNT_TICKS = 16 
+     parameter DBIT = 8,     // # data bits
+               SB_TICK = 16  // # ticks for stop bits
    )
    (
-    input wire clk,
-    input wire reset,
-    input wire tx_start, 
-    input wire tick,
-    input wire [N-1:0] data_in,
-    output reg tx_done,
+    input wire clk, reset,
+    input wire tx_start, s_tick,
+    input wire [7:0] din,
+    output reg tx_done_tick,
     output wire tx
    );
 
    // symbolic state declaration
    localparam [1:0]
-      IDLE  = 2'b00,
-      START = 2'b01,
-      DATA  = 2'b10,
-      STOP  = 2'b11;
+      idle  = 2'b00,
+      start = 2'b01,
+      data  = 2'b10,
+      stop  = 2'b11;
 
    // signal declaration
-   reg [1:0] state, next_state;
-   reg [3:0] baud_counter, baud_counter_reg;
-   reg [2:0] bit_counter, bit_counter_reg;
-   reg [7:0] shift_reg, shift_reg_next;
+   reg [1:0] state_reg, state_next;
+   reg [3:0] s_reg, s_next;
+   reg [2:0] n_reg, n_next;
+   reg [7:0] b_reg, b_next;
    reg tx_reg, tx_next;
 
    // body
@@ -33,81 +31,81 @@ module uart_tx
    always @(posedge clk)
       if (reset)
          begin
-            state <= IDLE;
-            baud_counter <= 0;
-            bit_counter <= 0;
-            shift_reg <= 0;
+            state_reg <= idle;
+            s_reg <= 0;
+            n_reg <= 0;
+            b_reg <= 0;
             tx_reg <= 1'b1;
          end
       else
          begin
-            state <= next_state;
-            baud_counter <= baud_counter_reg;
-            bit_counter <= bit_counter_reg;
-            shift_reg <= shift_reg_next;
+            state_reg <= state_next;
+            s_reg <= s_next;
+            n_reg <= n_next;
+            b_reg <= b_next;
             tx_reg <= tx_next;
          end
 
    // FSMD next-state logic & functional units
    always @*
    begin
-      next_state = state;
-      tx_done = 1'b0;
-      baud_counter_reg = baud_counter;
-      bit_counter_reg = bit_counter;
-      shift_reg_next = shift_reg;
+      state_next = state_reg;
+      tx_done_tick = 1'b0;
+      s_next = s_reg;
+      n_next = n_reg;
+      b_next = b_reg;
       tx_next = tx_reg ;
-      case (state)
-         IDLE:
+      case (state_reg)
+         idle:
             begin
                tx_next = 1'b1;
                if (tx_start)
                   begin
-                     next_state = START;
-                     baud_counter_reg = 0;
-                     shift_reg_next = data_in;
+                     state_next = start;
+                     s_next = 0;
+                     b_next = din;
                   end
             end
-         START:
+         start:
             begin
                tx_next = 1'b0;
-               if (tick)
-                  if (baud_counter==(COUNT_TICKS-1))
+               if (s_tick)
+                  if (s_reg==(SB_TICK-1))
                      begin
-                        next_state = DATA;
-                        baud_counter_reg = 0;
-                        bit_counter_reg = 0;
+                        state_next = data;
+                        s_next = 0;
+                        n_next = 0;
                      end
                   else
-                     baud_counter_reg = baud_counter + 1;
+                     s_next = s_reg + 1;
             end
-         DATA:
+         data:
             begin
-               tx_next = shift_reg[0];
-               if (tick)
-                  if (baud_counter==(COUNT_TICKS-1))
+               tx_next = b_reg[0];
+               if (s_tick)
+                  if (s_reg==(SB_TICK-1))
                      begin
-                        baud_counter_reg = 0;
-                        shift_reg_next = shift_reg >> 1;
-                        if (bit_counter==(N-1))
-                           next_state = STOP ;
+                        s_next = 0;
+                        b_next = b_reg >> 1;
+                        if (n_reg==(DBIT-1))
+                           state_next = stop ;
                         else
-                           bit_counter_reg = bit_counter + 1;
+                           n_next = n_reg + 1;
                      end
                   else
-                     baud_counter_reg = baud_counter + 1;
+                     s_next = s_reg + 1;
             end
-         STOP:
+         stop:
             begin
                tx_next = 1'b1;
-               if (tick)
-                  if (baud_counter==(COUNT_TICKS-1))
+               if (s_tick)
+                  if (s_reg==(SB_TICK-1))
                      begin
-                        next_state = IDLE;
-                        tx_done = 1'b1;
+                        state_next = idle;
+                        tx_done_tick = 1'b1;
                      end
                   else
-                     baud_counter_reg = baud_counter + 1;
+                     s_next = s_reg + 1;
             end
       endcase
    end

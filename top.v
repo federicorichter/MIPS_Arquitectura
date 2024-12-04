@@ -17,12 +17,15 @@ module top#(
     input wire i_uart_rx,
     output wire o_uart_tx,
     input wire i_clk,
-    output reg_state_o, 
-    output bit_load_program_o, 
-    output reg_start_ex_o,
-    output [7:0]uart_rx_o
+    output wire reg_state_o, 
+    output wire bit_load_program_o, 
+    output wire reg_start_ex_o,
+    output wire [7:0] uart_rx_o
 );  
     wire o_locked;
+    wire uart_tx_full, uart_rx_empty;
+    wire [7:0] uart_rx_data, uart_tx_data;
+    wire uart_wr_uart, uart_rd_uart;
   
     clk_wiz_0 clkWiz (
         .clk_out1(o_clk),
@@ -56,4 +59,3 @@ module top#(
     );
 
 endmodule
- 

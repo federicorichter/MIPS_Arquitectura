@@ -37,6 +37,8 @@ module tb_top;
     reg [7:0] pc_uart_tx_data;
     reg pc_uart_tx_start_reg;
     reg pc_uart_rx_done_reg;
+    reg [31:0]regs[31:0];
+
 
     // Instantiate the MIPS module
     mips #(
@@ -61,44 +63,24 @@ module tb_top;
         //.tx_done_tick(uart_tx_start)
     );
 
-    // Instantiate the second UART module (PC simulation)
-    wire tick;
-
-    reg [31:0]regs[31:0];
-    reg done = 0;
-    baudrate_generator #(
-        .COUNT(326)
-    ) baud_gen (
+    // Instantiate the UART module (PC simulation)
+    uart #(
+        .DBIT(8),
+        .SB_TICK(16),
+        .DVSR(651),   // 9600 baud rate with 10MHz clock
+        .DVSR_BIT(10),
+        .FIFO_W(4)
+    ) uart_inst (
         .clk(i_clk),
         .reset(i_rst),
-        .tick(tick)
-    );
-
-    uart_tx #(
-        .N(8),
-        .COUNT_TICKS(16)
-    ) uart_tx_inst (
-        .clk(i_clk),
-        .reset(i_rst),
-        .tx_start(pc_uart_tx_start_reg),
-        .tick(tick),
-        .data_in(pc_uart_tx_data),
-        .tx_done(pc_uart_tx_full),
-        .tx(pc_uart_tx)
-    );
-
-    uart_rx #(
-        .N(8),
-        .COUNT_TICKS(16)
-    ) uart_rx_inst (
-        .clk(i_clk),
-        .reset(i_rst),
-        .tick(tick),
+        .rd_uart(pc_uart_rx_done_reg),
+        .wr_uart(pc_uart_tx_start_reg),
         .rx(o_uart_tx),
-        .data_out(pc_uart_rx_data),
-        .valid(pc_uart_rx_done),
-        .state_leds(),
-        .started()
+        .w_data(pc_uart_tx_data),
+        .tx_full(pc_uart_tx_full),
+        .rx_empty(pc_uart_rx_empty),
+        .tx(pc_uart_tx),
+        .r_data(pc_uart_rx_data)
     );
 
     // Connect the UART modules
@@ -124,34 +106,6 @@ module tb_top;
         send_uart_command(8'h07); // Command to start loading program
         send_uart_command(8'd11); // Cantidad de instrucciones a cargar
         // Send the instructions
-        /*send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
-        send_uart_data(32'b00111100000000100000000000000001, 32); // R2 = 1
-        send_uart_data(32'b00111100000000110000000000001001, 32); // R3 = 9
-        send_uart_data(32'b00111100000001000000000000000111, 32); // R4 = 7
-        send_uart_data(32'b00111100000001010000000000000011, 32); // R5 = 3
-        send_uart_data(32'b00111100000001100000000001100101, 32); // R6 = 101
-        send_uart_data(32'b00111100000001110000000000011001, 32); // R7 = 25
-        send_uart_data(32'b00000000001000100001100000100011, 32); // R3 = R1 - R2 -> 2
-        send_uart_data(32'b00000000011001000010100000100001, 32); // R5 = R3 + R4 -> 9
-        send_uart_data(32'b00000000011001100011100000100001, 32); // R7 = R3 + R6 -> 103
-        send_uart_data(32'b00000000011001000010100000100001, 32); // R15 = R3 + R5
-        send_uart_data(32'b00111100000011110000000010010100, 32); // R15 = 300
-        send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
-        send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
-        send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3*/
-
-        /*send_uart_data(32'b00111100000000010000000000001000,32); // LUI R1, 8 => parece q anda
-        send_uart_data(32'b00111100000000110000000000000110,32); // LUI R3, 6
-        send_uart_data(32'b00111100000000110000000000000110,32); // LUI R3, 6
-        send_uart_data(32'b00111100000000110000000000000110,32); // LUI R3, 6 
-        send_uart_data(32'b00000000001000000100100000001001,32); // JALR, R1, R9
-        send_uart_data(32'b00111100000000110000000000000011,32); // LUI R3, 3
-        send_uart_data(32'b00111100000000110000000000001111,32); // LUI R3, 15
-        send_uart_data(32'b00111100000000110000000000001101,32); // LUI R3, 13 -> Salta aca
-        send_uart_data(32'b00111100000000110000000000000101,32); // LUI R3, 5 
-        send_uart_data(32'b00111100000000110000000000000100,32); // LUI R3, 4
-        send_uart_data(32'b00111100000000110000000000000110, 32); // LUI R3, 6*/
-
         send_uart_data(32'b00111100000000010000000000000001, 32); // LUI R1, 1
         send_uart_data(32'b00111100000000110000000000000011, 32); // LUI R3, 3
         send_uart_data(32'b00111100000010110000000000000001, 32); // NOP 
@@ -162,8 +116,8 @@ module tb_top;
         send_uart_data(32'b10000100001001010000000000000001, 32); // LH, R5 <- MEM[1]
         send_uart_data(32'b00000000101000110011100000100001, 32); // R7 = R5 + R3 => Anda
         send_uart_data(32'b00111100000010110000000000000011, 32); // NOP
-        send_uart_data( 32'b00111100000010110000000000000001, 32); // NOP
-        send_uart_data( 32'b00111100000010110000000000000001, 32); // NOP 
+        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
+        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP 
 
         send_uart_command(8'h11); // Command to set step-by-step mode
         wait_for_ready(); // Wait for 'R'

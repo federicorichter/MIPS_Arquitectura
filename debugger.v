@@ -114,56 +114,38 @@ module debugger #(
     reg done_inst_write = 0;
     reg ctr_rx_done = 0;
 
-    // UART modules
-    wire tick;
-    baudrate_generator #(
-        .COUNT(326)
-    ) baud_gen (
+    // UART signals
+    wire uart_tx_full, uart_rx_empty;
+    wire [7:0] uart_rx_data, uart_tx_data;
+    reg uart_wr_uart, uart_rd_uart;
+    
+    // UART module instance
+    uart #(
+        .DBIT(8),
+        .SB_TICK(16),
+        .DVSR(651),   // 9600 baud rate with 10MHz clock
+        .DVSR_BIT(10),
+        .FIFO_W(4)
+    ) uart_inst (
         .clk(i_clk),
         .reset(i_reset),
-        .tick(tick)
-    );
-
-    uart_tx #(
-        .N(8),
-        .COUNT_TICKS(16)
-    ) uart_tx_inst (
-        .clk(i_clk),
-        .reset(i_reset),
-        .tx_start(uart_tx_start),
-        .tick(tick),
-        .data_in(uart_tx_data_reg),
-        .tx_done(uart_tx_full),
-        .tx(o_uart_tx)
-    );
-
-    uart_rx #(
-        .N(8),
-        .COUNT_TICKS(16)
-    ) uart_rx_inst (
-        .clk(i_clk),
-        .reset(i_reset),
-        .tick(tick),
+        .rd_uart(uart_rd_uart),
+        .wr_uart(uart_wr_uart),
         .rx(i_uart_rx),
-        .data_out(uart_rx_data),
-        .valid(uart_rx_done),
-        .state_leds(),
-        .started()
+        .w_data(uart_tx_data_reg),
+        .tx_full(uart_tx_full),
+        .rx_empty(uart_rx_empty),
+        .tx(o_uart_tx),
+        .r_data(uart_rx_data)
     );
-
-    always @(*) begin
-        o_write_addr_reg = o_write_addr;
-        o_write_data_reg = o_write_data;
-        o_inst_write_enable_reg = o_inst_write_enable;
-    end
-
+    
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             uart_rx_done_reg <= 0;
             uart_rx_data_reg <= 0;
             ctr_rx_done <= 0;
         end else begin
-            if (uart_rx_done && !ctr_rx_done) begin
+            if (!uart_rx_empty && !ctr_rx_done) begin
                 uart_rx_data_reg <= uart_rx_data;
                 uart_rx_done_reg <= 1;
                 ctr_rx_done <= 1;
@@ -172,6 +154,17 @@ module debugger #(
                 ctr_rx_done <= 0;
             end
         end
+    end
+    
+    always @(*) begin
+        uart_wr_uart = uart_tx_start_reg;
+        uart_rd_uart = !uart_rx_empty;
+    end
+
+    always @(*) begin
+        o_write_addr_reg = o_write_addr;
+        o_write_data_reg = o_write_data;
+        o_inst_write_enable_reg = o_inst_write_enable;
     end
 
     always @(posedge i_clk or posedge i_reset) begin
@@ -536,6 +529,6 @@ module debugger #(
 
     assign uart_tx_start = uart_tx_start_reg;
     //assign uart_tx_data = uart_tx_data_reg;
-    assign uart_rx_o = uart_rx_data;
+    assign uart_rx_o = uart_tx_data_reg;
 
 endmodule

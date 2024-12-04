@@ -3,7 +3,7 @@ module uart_rx #(
     parameter M = 1,  // Number of stop bits
     parameter PARITY_EN = 0,  // Enable parity bit (0: disable, 1: enable)
     parameter BAUD_RATE = 9600,  // Baud rate
-    parameter CLK_FREQ = 100000000,  // Clock frequency
+    parameter CLK_FREQ = 30000000,  // Clock frequency
     parameter COUNT_TICKS = 16
 )(
     input wire tick,

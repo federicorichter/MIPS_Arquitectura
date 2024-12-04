@@ -111,6 +111,7 @@ module debugger #(
     reg [31:0] send_memory_counter = 0;
     reg [SIZE-1:0] stop_pc = 0;
     reg done_inst_write = 0;
+    reg ctr_rx_done = 0;
 
     // UART modules
     wire tick;
@@ -155,13 +156,20 @@ module debugger #(
         o_inst_write_enable_reg = o_inst_write_enable;
     end
 
-    always @(posedge uart_rx_done) begin
-        uart_rx_data_reg <= uart_rx_data;
-        uart_rx_done_reg <= 1;
-    end
-    always @(negedge uart_rx_done) begin
-        //uart_rx_data_reg <= uart_rx_data;
-        uart_rx_done_reg <= 0;
+    always @(posedge i_clk or posedge i_reset) begin
+        if (i_reset) begin
+            uart_rx_done_reg <= 0;
+            ctr_rx_done <= 0;
+        end else begin
+            if (uart_rx_done && !ctr_rx_done) begin
+                uart_rx_data_reg <= uart_rx_data;
+                uart_rx_done_reg <= 1;
+                ctr_rx_done <= 1;
+            end else begin
+                uart_rx_done_reg <= 0;
+                ctr_rx_done <= 0;
+            end
+        end
     end
 
     always @(posedge i_clk or posedge i_reset) begin
@@ -431,77 +439,77 @@ module debugger #(
                 next_state = IDLE;
             end
             WAIT_RX_DOWN_STOP_PC: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = RECEIVE_STOP_PC;
                 end else begin
                     next_state = WAIT_RX_DOWN_STOP_PC;
                 end
             end
             WAIT_RX_DONE_DOWN_IDLE: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = IDLE;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_IDLE;
                 end
             end
             WAIT_RX_DONE_DOWN_SEND_REGISTERS: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = SEND_REGISTERS;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_SEND_REGISTERS;
                 end
             end
             WAIT_RX_DONE_DOWN_SEND_IF_ID: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = SEND_IF_ID;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_SEND_IF_ID;
                 end
             end
             WAIT_RX_DONE_DOWN_SEND_ID_EX: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = SEND_ID_EX;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_SEND_ID_EX;
                 end
             end
             WAIT_RX_DONE_DOWN_SEND_EX_MEM: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = SEND_EX_MEM;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_SEND_EX_MEM;
                 end
             end
             WAIT_RX_DONE_DOWN_SEND_MEM_WB: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = SEND_MEM_WB;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_SEND_MEM_WB;
                 end
             end
             WAIT_RX_DONE_DOWN_SEND_MEMORY: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = SEND_MEMORY;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_SEND_MEMORY;
                 end
             end
             WAIT_RX_DONE_DOWN_LOAD_PROGRAM: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = LOAD_PROGRAM;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
                 end
             end
             WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = RECEIVE_ADDRESS;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS;
                 end
             end
             WAIT_RX_DONE_DOWN_WAIT_EXECUTE: begin
-                if (!uart_rx_done) begin
+                if (!uart_rx_done_reg) begin
                     next_state = WAIT_EXECUTE;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_WAIT_EXECUTE;

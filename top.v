@@ -16,14 +16,17 @@ module top#(
     input wire i_stall,
     input wire i_uart_rx,
     output wire o_uart_tx,
-    input wire i_clk
-    //output wire rx_done_tick, // Añadir señal de tick de recepción
-    //output wire tx_done_tick  // Añadir señal de tick de transmisión
+    input wire i_clk,
+    output reg_state_o, 
+    output bit_load_program_o, 
+    output reg_start_ex_o,
+    output [7:0]uart_rx_o
 );  
+    wire o_locked;
   
     clk_wiz_0 clkWiz (
         .clk_out1(o_clk),
-        .reset(i_reset),
+        .reset(i_rst),
         .locked(o_locked),
         .clk_in1(i_clk)        
     ); 
@@ -41,13 +44,15 @@ module top#(
         .NUM_REGISTERS(NUM_REGISTERS),
         .MEM_SIZE(MEM_SIZE)
     ) uut (
-        .i_rst(i_rst),
+        .i_rst(i_rst || ~o_locked),
         .i_stall(1'b0),
         .i_uart_rx(i_uart_rx),
         .o_uart_tx(o_uart_tx),
-        .i_clk(o_clk)
-        //.rx_done_tick(uart_rx_done),
-        //.tx_done_tick(uart_tx_start)
+        .i_clk(o_clk),
+        .reg_state_o(reg_state_o), 
+        .bit_load_program_o(bit_load_program_o), 
+        .reg_start_ex_o(reg_start_ex_o),
+        .uart_rx_o(uart_rx_o)
     );
 
 endmodule

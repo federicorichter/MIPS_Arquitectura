@@ -1,5 +1,5 @@
 module baudrate_generator #(
-    parameter COUNT = 326
+    parameter COUNT = 196
 )(
     input wire clk,
     input wire reset,

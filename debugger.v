@@ -30,7 +30,8 @@ module debugger #(
     output wire uart_tx_start,
     output wire uart_tx_full,
     //output wire uart_rx_empty,
-    output reg o_clk_mem_read
+    output reg o_clk_mem_read,
+    output wire [7:0]uart_rx_o
 );
 
     // UART signals
@@ -159,6 +160,7 @@ module debugger #(
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             uart_rx_done_reg <= 0;
+            uart_rx_data_reg <= 0;
             ctr_rx_done <= 0;
         end else begin
             if (uart_rx_done && !ctr_rx_done) begin
@@ -534,5 +536,6 @@ module debugger #(
 
     assign uart_tx_start = uart_tx_start_reg;
     //assign uart_tx_data = uart_tx_data_reg;
+    assign uart_rx_o = uart_rx_data;
 
 endmodule

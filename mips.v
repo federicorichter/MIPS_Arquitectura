@@ -16,7 +16,9 @@ module mips #(
     input wire i_stall,
     input wire i_uart_rx,
     output wire o_uart_tx,
-    input wire i_clk
+    input wire i_clk,
+    output wire reg_state_o, bit_load_program_o, reg_start_ex_o,
+    output wire [7:0] uart_rx_o
     //output wire rx_done_tick, // Añadir señal de tick de recepción
     //output wire tx_done_tick  // Añadir señal de tick de transmisión
 );  
@@ -96,6 +98,7 @@ module mips #(
     wire [SIZE-1:0] immediate_plus_pc;
     wire if_flush;
     wire [SIZE-1:0] pc_plus_4;
+    wire reg_state_o, bit_load_program_o, reg_start_ex_o;
 
 
     always @(posedge i_clk) begin
@@ -143,8 +146,12 @@ module mips #(
         .o_clk_mem_read(clk_mem_read),
         .i_registers_debug(i_registers_debug),
         .uart_tx_start(uart_tx_start),
-        .uart_tx_full(uart_tx_full)
+        .uart_tx_full(uart_tx_full),
         //.uart_rx_empty(uart_rx_empty)
+        //.reg_state_w(reg_state_o), 
+        //.bit_load_program_w(bit_load_program_o), 
+        //.reg_start_ex_w(reg_start_ex_o),
+        .uart_rx_o(uart_rx_o)
     );
 
     hazard_detection #(

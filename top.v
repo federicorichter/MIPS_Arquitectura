@@ -23,7 +23,7 @@ module top#(
   
     clk_wiz_0 clkWiz (
         .clk_out1(o_clk),
-        .reset(i_reset),
+        .reset(i_rst),
         .locked(o_locked),
         .clk_in1(i_clk)        
     ); 

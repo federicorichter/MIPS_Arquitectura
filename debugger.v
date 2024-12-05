@@ -45,9 +45,9 @@ module debugger #(
     reg [((ID_EX_SIZE + 7) / 8) * 8 - 1:0] padded_id_ex;
     reg [((EX_MEM_SIZE + 7) / 8) * 8 - 1:0] padded_ex_mem;
     reg [((MEM_WB_SIZE + 7) / 8) * 8 - 1:0] padded_mem_wb;
-    integer instruction_count = 0; // Cantidad de instrucciones a recibir
-    integer instruction_counter = 0; // Contador de instrucciones recibidas
-    integer byte_counter = 0; // Contador de bytes recibidos
+    reg [31:0] instruction_count = 0; // Cantidad de instrucciones a recibir
+    reg [31:0] instruction_counter = 0; // Contador de instrucciones recibidas
+    reg [31:0] byte_counter = 0; // Contador de bytes recibidos
     wire [7:0] uart_rx_data;
     wire [7:0] uart_tx_data;
     wire uart_rx_done; 
@@ -116,7 +116,7 @@ module debugger #(
     // UART modules
     wire tick;
     baudrate_generator #(
-        .COUNT(326)
+        .COUNT(66)
     ) baud_gen (
         .clk(i_clk),
         .reset(i_reset),

@@ -402,6 +402,7 @@ module mips #(
         .MEM_SIZE(MEM_SIZE)
     ) MEM (
         .clk(clk_to_use),
+        .clk2(i_clk),
         .rst(i_rst),
         .i_mem_write(ex_to_mem[71]),
         .i_mem_read(ex_to_mem[70]),

@@ -6,14 +6,17 @@ module tb_top;
     parameter SIZE = 32;
     parameter SIZE_OP = 6;
     parameter CONTROL_SIZE = 18;
-    parameter IF_ID_SIZE = 32;
+    parameter SIZE_REG_DIR = 5;
+    parameter IF_ID_SIZE = 64;
     parameter ID_EX_SIZE = 129;
-    parameter EX_MEM_SIZE = 77;
-    parameter MEM_WB_SIZE = 71;
-    parameter ADDR_WIDTH = 32;
-    parameter MAX_INSTRUCTION = 64;
+    parameter EX_MEM_SIZE = 78;
+    parameter MEM_WB_SIZE = 72;
+    parameter MAX_INSTRUCTION = 64; // Define MAX_INSTRUCTION
     parameter NUM_REGISTERS = 32;
-    parameter MEM_SIZE = 64;
+    parameter MEM_SIZE = 64; // Define MEM_SIZE
+    parameter ADDR_WIDTH = $clog2(MEM_SIZE);
+
+
 
     // Signals
     reg i_rst;
@@ -38,7 +41,7 @@ module tb_top;
     reg pc_uart_tx_start_reg;
     reg pc_uart_rx_done_reg;
 
-    // Instantiate the MIPS module
+    // Instantiate the top module
     mips #(
         .SIZE(SIZE),
         .SIZE_OP(SIZE_OP),
@@ -67,7 +70,7 @@ module tb_top;
     reg [31:0]regs[31:0];
     reg done = 0;
     baudrate_generator #(
-        .COUNT(326)
+        .COUNT(66)
     ) baud_gen (
         .clk(i_clk),
         .reset(i_rst),
@@ -105,7 +108,7 @@ module tb_top;
     assign i_uart_rx = pc_uart_tx;
 
     // Clock generation
-    always #5 i_clk = ~i_clk;
+    always #50 i_clk = ~i_clk;
 
     // Testbench procedure
     initial begin
@@ -116,7 +119,7 @@ module tb_top;
         pc_uart_rx_done_reg = 0;
 
         // Reset the system
-        #10 i_rst = 0;
+        #1000 i_rst = 0;
 
         // Set continuous mode
         send_uart_command(8'h08); // Command to set continuous mode

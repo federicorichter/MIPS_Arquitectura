@@ -4,6 +4,7 @@ module data_memory #(
     parameter ADDR_WIDTH = $clog2(MEM_SIZE)
 )(
     input wire clk,
+    input wire clk2,
     input wire rst, // Señal de reset
     input wire i_clk_mem_read,
     input wire i_mem_write,  // Señal de habilitación de escritura
@@ -71,9 +72,11 @@ module data_memory #(
         end
     end
 
-    always @(negedge i_clk_mem_read) begin
+    always @(negedge clk2) begin
         // Leer 32 bits (4 bytes) desde la memoria para depuración
-        debug_data_reg <= {mem[debug_addr+3], mem[debug_addr+2], mem[debug_addr+1], mem[debug_addr]};
+        if(i_clk_mem_read) begin
+            debug_data_reg <= {mem[debug_addr+3], mem[debug_addr+2], mem[debug_addr+1], mem[debug_addr]};
+        end
     end
 
     assign read_data = i_mem_read ? read_data_reg : addr;

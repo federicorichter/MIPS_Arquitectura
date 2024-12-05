@@ -30,8 +30,13 @@ module debugger #(
     output wire uart_tx_start,
     output wire uart_tx_full,
     //output wire uart_rx_empty,
-    output reg o_clk_mem_read
-);
+    output reg o_clk_mem_read,
+    output reg [5:0] state_out,
+    output reg [7:0] uart_rx_data_out,
+    output reg [4:0] instruction_counter_out,
+    output reg [4:0] instruction_count_out,
+    output reg [4:0] byte_counter_out
+    );
 
     // UART signals
     reg uart_tx_start_reg = 0;
@@ -160,9 +165,11 @@ module debugger #(
         if (i_reset) begin
             uart_rx_done_reg <= 0;
             ctr_rx_done <= 0;
+            uart_rx_data_reg <= 0;
         end else begin
             if (uart_rx_done && !ctr_rx_done) begin
                 uart_rx_data_reg <= uart_rx_data;
+                uart_rx_data_out <= uart_rx_data;
                 uart_rx_done_reg <= 1;
                 ctr_rx_done <= 1;
             end else begin
@@ -175,9 +182,14 @@ module debugger #(
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             state <= IDLE;
+            state_out <= IDLE;
             //uart_rx_done_reg <= 0;
         end else begin
             state <= next_state;
+            state_out <= state;
+            instruction_count_out <= instruction_count[4:0]; // Cargar los 5 bits menos significativos
+            instruction_counter_out <= instruction_counter[4:0]; // Cargar los 5 bits menos significativos
+            byte_counter_out <= byte_counter[4:0]; // Cargar los 5 bits menos significativos
                 //uart_rx_done_reg <= 0;
         end
     end
@@ -193,6 +205,15 @@ module debugger #(
                 send_ex_mem_counter = 0;
                 send_mem_wb_counter = 0;
                 send_memory_counter = 0;
+                byte_counter = 0;
+                instruction_counter = 0;
+                instruction_count = 0;
+                o_write_addr = 0;
+                o_write_data = 0;
+                o_inst_write_enable = 0;
+                o_mode = 0;
+                o_clk_mem_read = 0;
+                o_debug_addr = 0;
                 if (uart_rx_done_reg) begin
                     case (uart_rx_data_reg)
                         8'h01: next_state = WAIT_RX_DONE_DOWN_SEND_REGISTERS;
@@ -372,10 +393,11 @@ module debugger #(
             LOAD_PROGRAM: begin
                 if (uart_rx_done_reg) begin
                     if (byte_counter == 0) begin
+                        byte_counter = byte_counter + 1;
                         instruction_count = uart_rx_data_reg; // Recibir la cantidad de instrucciones
                         stop_pc = instruction_count + 5; // Valor por defecto
                         done_inst_write = 0;
-                        byte_counter = byte_counter + 1;
+                        next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
                     end else begin
                         case (byte_counter)
                             1: instruction_buffer[7:0] = uart_rx_data_reg;
@@ -394,18 +416,13 @@ module debugger #(
                                 o_write_addr = o_write_addr + 1; // Incrementar la dirección de escritura para la siguiente instrucción
                             end
                         end
-                        if (instruction_counter == instruction_count) begin // Si se han recibido todas las instrucciones
+                        if (instruction_counter == instruction_count && (instruction_count > 0)) begin // Si se han recibido todas las instrucciones
                             o_mode = original_mode; // Restaurar el modo original
                             o_write_addr = 0;
                             next_state = WAIT_EXECUTE;
                         end else begin
-                            next_state = LOAD_PROGRAM;
+                            next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
                         end
-                    end
-                    if(next_state == WAIT_EXECUTE) begin
-                        next_state = WAIT_EXECUTE;
-                    end else begin
-                        next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
                     end
                 end
             end

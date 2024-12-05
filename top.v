@@ -16,6 +16,11 @@ module top#(
     input wire i_stall,
     input wire i_uart_rx,
     output wire o_uart_tx,
+    output wire [5:0] state_out,
+   // output wire [4:0] instruction_count_out,
+    output wire [4:0] byte_counter_out,
+    output wire [4:0] instruction_counter_out,
+    //output wire [7:0] uart_rx_data_out,
     input wire i_clk
     //output wire rx_done_tick, // Añadir señal de tick de recepción
     //output wire tx_done_tick  // Añadir señal de tick de transmisión
@@ -27,7 +32,7 @@ module top#(
         .locked(o_locked),
         .clk_in1(i_clk)        
     ); 
-   
+
     mips #(
         .SIZE(SIZE),
         .SIZE_OP(SIZE_OP),
@@ -45,7 +50,12 @@ module top#(
         .i_stall(1'b0),
         .i_uart_rx(i_uart_rx),
         .o_uart_tx(o_uart_tx),
-        .i_clk(o_clk)
+        .i_clk(o_clk),
+        .state_out(state_out),
+        // .instruction_count_out(instruction_count_out),
+        .byte_counter_out(byte_counter_out),
+        .instruction_counter_out(instruction_counter_out)
+        //.uart_rx_data_out(uart_rx_data_out)
         //.rx_done_tick(uart_rx_done),
         //.tx_done_tick(uart_tx_start)
     );

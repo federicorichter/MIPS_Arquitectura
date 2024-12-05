@@ -16,6 +16,12 @@ module mips #(
     input wire i_stall,
     input wire i_uart_rx,
     output wire o_uart_tx,
+    output wire [5:0] state_out,
+    output wire [7:0] uart_rx_data_out,
+    output wire [4:0] instruction_count_out,
+    output wire [4:0] instruction_counter_out,
+    output wire [4:0] byte_counter_out,
+
     input wire i_clk
     //output wire rx_done_tick, // Añadir señal de tick de recepción
     //output wire tx_done_tick  // Añadir señal de tick de transmisión
@@ -143,9 +149,15 @@ module mips #(
         .o_clk_mem_read(clk_mem_read),
         .i_registers_debug(i_registers_debug),
         .uart_tx_start(uart_tx_start),
-        .uart_tx_full(uart_tx_full)
+        .uart_tx_full(uart_tx_full),
+        .state_out(state_out),
+        .uart_rx_data_out(uart_rx_data_out),
+        .instruction_count_out(instruction_count_out),
+        .instruction_counter_out(instruction_counter_out),
+        .byte_counter_out(byte_counter_out)
         //.uart_rx_empty(uart_rx_empty)
     );
+
 
     hazard_detection #(
         .SIZE_REG_DIR(5),

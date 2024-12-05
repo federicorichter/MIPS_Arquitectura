@@ -47,7 +47,7 @@ module uart_rx #(
             state <= IDLE;
             baud_counter <= 0;
             bit_counter <= 0;
-            received_byte <= {N,0};
+            received_byte <= {N,1'b0};
         end else if(clk) begin
             state <= next_state;
             baud_counter <= baud_counter_reg;

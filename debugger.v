@@ -104,6 +104,8 @@ module debugger #(
     localparam WAIT_TX_DOWN_IDLE_ACK = 37;
     localparam RECEIVE_STOP_PC = 38;
     localparam WAIT_RX_DOWN_STOP_PC = 39;
+    localparam RECEIVE_INSTRUCTION_COUNT = 40;
+    localparam WAIT_RX_DONE_DOWN_RECEIVE_INSTRUCTION_COUNT = 41;
 
 
     reg [5:0] state, next_state;
@@ -225,7 +227,7 @@ module debugger #(
                         8'h07: begin
                             original_mode = o_mode; // Guardar el modo original
                             o_mode = 0; // Cambiar a modo continuo
-                            next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
+                            next_state = WAIT_RX_DONE_DOWN_RECEIVE_INSTRUCTION_COUNT;
                         end
                         8'h08: begin
                             o_mode = 0; // Modo continuo
@@ -390,40 +392,57 @@ module debugger #(
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY;
                 end
             end
+            RECEIVE_INSTRUCTION_COUNT: begin
+                if (uart_rx_done_reg) begin
+                    instruction_count = uart_rx_data_reg; // Recibir la cantidad de instrucciones
+                    stop_pc = instruction_count + 5; // Valor por defecto
+                    done_inst_write = 0;
+                    next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
+                end
+            end
+            
+            WAIT_RX_DONE_DOWN_RECEIVE_INSTRUCTION_COUNT: begin
+                if (!uart_rx_done_reg) begin
+                    next_state = RECEIVE_INSTRUCTION_COUNT;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_RECEIVE_INSTRUCTION_COUNT;
+                end
+            end
+            
             LOAD_PROGRAM: begin
                 if (uart_rx_done_reg) begin
-                    if (byte_counter == 0) begin
-                        byte_counter = byte_counter + 1;
-                        instruction_count = uart_rx_data_reg; // Recibir la cantidad de instrucciones
-                        stop_pc = instruction_count + 5; // Valor por defecto
-                        done_inst_write = 0;
-                        next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
-                    end else begin
-                        case (byte_counter)
-                            1: instruction_buffer[7:0] = uart_rx_data_reg;
-                            2: instruction_buffer[15:8] = uart_rx_data_reg;
-                            3: instruction_buffer[23:16] = uart_rx_data_reg;
-                            4: instruction_buffer[31:24] = uart_rx_data_reg;
-                            default: instruction_buffer = instruction_buffer;
-                        endcase
-                        byte_counter = byte_counter + 1;
-                        if (byte_counter == 5) begin // Si se han recibido 4 bytes de la instrucción
-                            o_inst_write_enable = 1;
-                            o_write_data = instruction_buffer;
-                            byte_counter = 1; // Reiniciar el contador para la siguiente instrucción
-                            instruction_counter = instruction_counter + 1;
-                            if (instruction_counter < instruction_count) begin
-                                o_write_addr = o_write_addr + 1; // Incrementar la dirección de escritura para la siguiente instrucción
-                            end
-                        end
-                        if (instruction_counter == instruction_count && (instruction_count > 0)) begin // Si se han recibido todas las instrucciones
-                            o_mode = original_mode; // Restaurar el modo original
-                            o_write_addr = 0;
-                            next_state = WAIT_EXECUTE;
-                        end else begin
-                            next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
+                    case (byte_counter)
+                        1: instruction_buffer[7:0] = uart_rx_data_reg;
+                        2: instruction_buffer[15:8] = uart_rx_data_reg;
+                        3: instruction_buffer[23:16] = uart_rx_data_reg;
+                        4: instruction_buffer[31:24] = uart_rx_data_reg;
+                        default: instruction_buffer = instruction_buffer;
+                    endcase
+                    byte_counter = byte_counter + 1;
+                    if (byte_counter == 5) begin // Si se han recibido 4 bytes de la instrucción
+                        o_inst_write_enable = 1;
+                        o_write_data = instruction_buffer;
+                        byte_counter = 1; // Reiniciar el contador para la siguiente instrucción
+                        instruction_counter = instruction_counter + 1;
+                        if (instruction_counter < instruction_count) begin
+                            o_write_addr = o_write_addr + 1; // Incrementar la dirección de escritura para la siguiente instrucción
                         end
                     end
+                    if (instruction_counter == instruction_count && (instruction_count > 0)) begin // Si se han recibido todas las instrucciones
+                        o_mode = original_mode; // Restaurar el modo original
+                        o_write_addr = 0;
+                        next_state = WAIT_EXECUTE;
+                    end else begin
+                        next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
+                    end
+                end
+            end
+            
+            WAIT_RX_DONE_DOWN_LOAD_PROGRAM: begin
+                if (!uart_rx_done_reg) begin
+                    next_state = LOAD_PROGRAM;
+                end else begin
+                    next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
                 end
             end
             RECEIVE_ADDRESS: begin

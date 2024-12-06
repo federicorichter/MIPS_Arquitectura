@@ -16,8 +16,6 @@ module tb_top;
     parameter MEM_SIZE = 64; // Define MEM_SIZE
     parameter ADDR_WIDTH = $clog2(MEM_SIZE);
 
-
-
     // Signals
     reg i_rst;
     reg i_clk;
@@ -29,6 +27,9 @@ module tb_top;
     wire uart_rx_empty;
     wire [7:0] uart_rx_data;
     wire [7:0] uart_tx_data;
+    wire [5:0] state_out;
+    wire [4:0] byte_counter_out;
+    wire [4:0] instruction_counter_out;
 
     // Signals for the second UART module (PC simulation)
     wire pc_uart_tx;
@@ -42,14 +43,14 @@ module tb_top;
     reg pc_uart_rx_done_reg;
 
     // Instantiate the top module
-    mips #(
+    top #(
         .SIZE(SIZE),
         .SIZE_OP(SIZE_OP),
         .CONTROL_SIZE(CONTROL_SIZE),
-        //.IF_ID_SIZE(IF_ID_SIZE),
-        //.ID_EX_SIZE(ID_EX_SIZE),
-        //.EX_MEM_SIZE(EX_MEM_SIZE),
-        //.MEM_WB_SIZE(MEM_WB_SIZE),
+        .IF_ID_SIZE(IF_ID_SIZE),
+        .ID_EX_SIZE(ID_EX_SIZE),
+        .EX_MEM_SIZE(EX_MEM_SIZE),
+        .MEM_WB_SIZE(MEM_WB_SIZE),
         .ADDR_WIDTH(ADDR_WIDTH),
         .MAX_INSTRUCTION(MAX_INSTRUCTION),
         .NUM_REGISTERS(NUM_REGISTERS),
@@ -59,9 +60,10 @@ module tb_top;
         .i_stall(1'b0),
         .i_uart_rx(i_uart_rx),
         .o_uart_tx(o_uart_tx),
-        .i_clk(i_clk)
-        //.rx_done_tick(uart_rx_done),
-        //.tx_done_tick(uart_tx_start)
+        .i_clk(i_clk),
+        .state_out(state_out),
+        .byte_counter_out(byte_counter_out),
+        .instruction_counter_out(instruction_counter_out)
     );
 
     // Instantiate the second UART module (PC simulation)
@@ -70,7 +72,7 @@ module tb_top;
     reg [31:0]regs[31:0];
     reg done = 0;
     baudrate_generator #(
-        .COUNT(66)
+        .COUNT(651)
     ) baud_gen (
         .clk(i_clk),
         .reset(i_rst),
@@ -108,7 +110,7 @@ module tb_top;
     assign i_uart_rx = pc_uart_tx;
 
     // Clock generation
-    always #50 i_clk = ~i_clk;
+    always #5 i_clk = ~i_clk;
 
     // Testbench procedure
     initial begin
@@ -176,7 +178,7 @@ module tb_top;
         //send_uart_command(8'h07); // Command to start program        
         send_uart_command(8'h0D); // Command to start program
         
-        #10000000;
+        #1000;
         send_uart_command(8'h0B);
         send_uart_command(8'h02);
         receive_data_from_uart(4);

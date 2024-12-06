@@ -24,7 +24,7 @@ module register_bank #(
     integer i;
     reg [SIZE-1:0] reg_A, reg_B;
 
-    always@(posedge clk)begin
+    always@(posedge clk or posedge rst)begin
         if(rst)begin
             for (i = 0 ; i < NUM_REGISTERS ; i = i + 1)begin
                 registers[i] <= 0;

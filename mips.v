@@ -103,6 +103,7 @@ module mips #(
     wire [SIZE-1:0] immediate_plus_pc;
     wire if_flush;
     wire [SIZE-1:0] pc_plus_4;
+    wire reset_debug;
 
 
     always @(posedge i_clk) begin
@@ -156,7 +157,8 @@ module mips #(
         .instruction_count_out(instruction_count_out),
         .instruction_counter_out(instruction_counter_out),
         .byte_counter_out(byte_counter_out),
-        .uart_rx_done_reg_out(uart_rx_done_reg_out)
+        .uart_rx_done_reg_out(uart_rx_done_reg_out),
+        .o_prog_reset(reset_debug)
         //.uart_rx_empty(uart_rx_empty)
     );
 

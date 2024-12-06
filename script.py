@@ -2,7 +2,7 @@ import serial
 import time
 import sys
 
-def setup_serial(port='/dev/ttyUSB1', baudrate=9600, timeout=1):
+def setup_serial(port='/dev/ttyUSB1', baudrate=9542, timeout=1):
     try:
         ser = serial.Serial(port, baudrate, timeout=timeout, parity=serial.PARITY_NONE)
         print(f"Serial port {port} opened successfully.")
@@ -67,10 +67,12 @@ def send_instructions(ser, instructions):
     send_uart_command(ser, len(instructions))  # Number of instructions
     for instruction in instructions:
         send_uart_data(ser, instruction, 32)
+    wait_for_ready(ser)
 
 def request_latch(ser, latch_command, expected_size):
     send_uart_command(ser, latch_command)
-    return receive_data_from_uart(ser, expected_size)
+    latchdata = receive_data_from_uart(ser, expected_size)
+    return latchdata
 
 def menu():
     print("\n--- UART Communication Menu ---")
@@ -82,9 +84,10 @@ def menu():
     print("6. Request ID/EX Latch")
     print("7. Request EX/MEM Latch")
     print("8. Request MEM/WB Latch")
-    print("9. Step Debugger")
-    print("10. Print memory data location")
-    print("11. Load instructions file")
+    print("9. Request Registers")
+    print("10. Step Debugger")
+    print("11. Print memory data location")
+    print("12. Load instructions file")
     print("0. Exit")
     choice = input("Enter your choice: ")
     return choice
@@ -95,6 +98,15 @@ def main():
         0x3C010001,  # LUI R1, 1
         0x3C030003,  # LUI R3, 3
         0x3C2B0001,  # NOP
+        0x3C2B0001,  # NOP
+        0xA8410001,  # SH, R1 -> MEM[1]
+        0x3C2B0001,  # NOP
+        0x3C2B0001,  # NOP
+        0x88450001,  # LH, R5 <- MEM[1]
+        0x00A31821,  # R7 = R5 + R3 => Anda
+        0x3C2B0003,  # NOP
+        0x3C2B0001,  # NOP
+        0x3C2B0001,  # NOP
     ]
 
     latch_data = {
@@ -102,6 +114,7 @@ def main():
         "6": (0x03, 17), # ID/EX
         "7": (0x04, 10), # EX/MEM
         "8": (0x05, 9),  # MEM/WB
+        "9": (0x01, 128) # REGISTERS
     }
 
     try:
@@ -112,8 +125,7 @@ def main():
                 send_uart_command(ser, 0x08)  # Set Continuous Mode
 
             elif choice == "2":
-                send_uart_command(ser, 0x11)
-                wait_for_ready(ser)
+                send_uart_command(ser, 0x09)
 
             elif choice == "3":
                 send_instructions(ser, instructions)
@@ -122,27 +134,29 @@ def main():
                 send_uart_command(ser, 0x0D)  # Start Program Execution
 
             elif choice in latch_data:
-                latch_name = {"5": "IF/ID", "6": "ID/EX", "7": "EX/MEM", "8": "MEM/WB"}[choice]
+                latch_name = {"5": "IF/ID", "6": "ID/EX", "7": "EX/MEM", "8": "MEM/WB", "9": "REGISTERS"}[choice]
                 print(f"Requesting {latch_name} latch...")
                 command, size = latch_data[choice]
                 data = request_latch(ser, command, size)
                 print(f"{latch_name} Data: {data}")
+                print(f"{latch_name} Data in bits: {' '.join(f'{byte:08b}' for byte in data)}")
                 wait_for_ready(ser)
            
-            elif choice == "9":
+            elif choice == "10":
                 send_uart_command(ser, 0x0A) # Step debugger
 
-            elif choice == "10":
+            elif choice == "11":
                 send_uart_command(ser, 0x0B) # Print data memory
                 position = input("Enter memory position (0-1023): ")
                 if position.isdigit() and 0 <= int(position) <= 1023:
                     send_uart_command(ser, int(position))
+                    receive_data_from_uart(ser, 4)
                     wait_for_ready(ser)
                 else:
                     print("Invalid position. Please enter a number between 0 and 1023.")
 
                 
-            elif choice == "11": 
+            elif choice == "12": 
                 print("Loading instructions frome .coe file")
                 coe_file = "program.coe"
                 instructions = load_instructions_from_coe(coe_file)

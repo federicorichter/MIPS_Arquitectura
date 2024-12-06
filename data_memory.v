@@ -41,7 +41,7 @@ module data_memory #(
         end
     end
 
-    always @(posedge clk) begin
+    always @(posedge clk or posedge rst) begin
         if (rst) begin
             // Inicializa toda la memoria a cero
             for (i = 0; i < MEM_SIZE; i = i + 1) begin

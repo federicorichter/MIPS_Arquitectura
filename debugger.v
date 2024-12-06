@@ -36,7 +36,8 @@ module debugger #(
     output reg [4:0] instruction_counter_out,
     output reg [4:0] instruction_count_out,
     output reg [2:0] byte_counter_out,
-    output reg uart_rx_done_reg_out
+    output reg uart_rx_done_reg_out,
+    output reg o_prog_reset    // New output for program reset signal
     );
 
     // UART signals
@@ -46,11 +47,11 @@ module debugger #(
     reg [7:0] uart_rx_data_reg = 0;
     reg [7:0] uart_tx_data_reg = 0;
     reg [31:0] instruction_buffer = 0; // Buffer para acumular los bytes de la instrucción
-    reg [((SIZE*NUM_REGISTERS + 7) / 8) * 8 - 1:0] padded_registers;
-    reg [((IF_ID_SIZE + 7) / 8) * 8 - 1:0] padded_if_id;
-    reg [((ID_EX_SIZE + 7) / 8) * 8 - 1:0] padded_id_ex;
-    reg [((EX_MEM_SIZE + 7) / 8) * 8 - 1:0] padded_ex_mem;
-    reg [((MEM_WB_SIZE + 7) / 8) * 8 - 1:0] padded_mem_wb;
+    reg [1023:0] padded_registers;
+    reg [31:0] padded_if_id;
+    reg [135:0] padded_id_ex;
+    reg [79:0] padded_ex_mem;
+    reg [71:0] padded_mem_wb;
     reg [31:0] instruction_count = 0; // Cantidad de instrucciones a recibir
     reg [31:0] instruction_counter = 0; // Contador de instrucciones recibidas
     integer byte_counter = 1; // Contador de bytes recibidos
@@ -111,6 +112,7 @@ module debugger #(
     localparam WAIT_RX_DONE_LOAD_PROGRAM_2 = 43;
     localparam WAIT_RX_DONE_LOAD_PROGRAM_3 = 44;
     localparam WAIT_RX_DONE_LOAD_PROGRAM_4 = 45;
+    localparam PROGRAM_RESET = 46;
 
 
     reg [5:0] state, next_state;
@@ -134,6 +136,8 @@ module debugger #(
     reg [SIZE-1:0] stop_pc = 0;
     reg done_inst_write = 0;
     reg ctr_rx_done = 0;
+    reg [3:0] reset_counter;
+    reg reset_active;
 
     // UART modules
     wire tick;
@@ -178,21 +182,35 @@ module debugger #(
         o_inst_write_enable_reg = o_inst_write_enable;
     end
 
+    reg [1:0] rx_state;
+    localparam RX_IDLE = 0;
+    localparam RX_RECEIVING = 1;
+    localparam RX_DONE = 2;
+
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
+            rx_state <= RX_IDLE;
             uart_rx_done_reg <= 0;
-            ctr_rx_done <= 0;
             uart_rx_data_reg <= 0;
         end else begin
-            if (uart_rx_done && !ctr_rx_done) begin
-                uart_rx_data_reg <= uart_rx_data;
-                uart_rx_data_out <= uart_rx_data;
-                uart_rx_done_reg <= 1;
-                ctr_rx_done <= 1;
-            end else begin
-                uart_rx_done_reg <= 0;
-                ctr_rx_done <= 0;
-            end
+            case (rx_state)
+                RX_IDLE: begin
+                    if (uart_rx_done) begin
+                        rx_state <= RX_RECEIVING;
+                        uart_rx_data_reg <= uart_rx_data;
+                        uart_rx_done_reg <= 1;
+                    end
+                end
+                RX_RECEIVING: begin
+                    uart_rx_done_reg <= 0;
+                    rx_state <= RX_DONE;
+                end
+                RX_DONE: begin
+                    if (!uart_rx_done) begin
+                        rx_state <= RX_IDLE;
+                    end
+                end
+            endcase
         end
     end
 
@@ -224,15 +242,27 @@ module debugger #(
     end
 
 
+    // Modify state and next_state logic
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             state <= IDLE;
             state_out <= IDLE;
-            //uart_rx_done_reg <= 0;
+            reset_counter <= 0;
+            reset_active <= 0;
+            o_prog_reset <= 0;
         end else begin
             state <= next_state;
             state_out <= state;
-                //uart_rx_done_reg <= 0;
+            
+            // Handle reset pulse timing
+            if (reset_active) begin
+                if (reset_counter == 15) begin  // Generate 16-cycle reset pulse
+                    reset_active <= 0;
+                    o_prog_reset <= 0;
+                end else begin
+                    reset_counter <= reset_counter + 1;
+                end
+            end
         end
     end
 
@@ -248,7 +278,8 @@ module debugger #(
         next_byte_counter = byte_counter;
         next_instruction_count = instruction_count;
         next_write_addr = o_write_addr;
-        stop_pc = instruction_count + 5; // Valor por defecto
+        uart_tx_start_reg = 0; // Reset TX start by default
+        stop_pc = instruction_count + 5;
         case (state)
             IDLE: begin
                 uart_tx_start_reg = 0;
@@ -260,7 +291,13 @@ module debugger #(
                 next_send_memory_counter = 0;
                 next_byte_counter = 1;
                 next_instruction_counter = 0;
+                uart_tx_data_reg = 0;
                 next_write_addr = 0;
+                padded_ex_mem = 0;
+                padded_id_ex = 0;
+                padded_if_id = 0;
+                padded_mem_wb = 0;
+                padded_registers = 0;
                 o_write_data = 0;
                 o_inst_write_enable = 0;
                 o_mode = 0;
@@ -306,9 +343,13 @@ module debugger #(
             end
             WAIT_UART_TX_FULL_DOWN_IDLE_ACK: begin
                 if (uart_tx_full) begin
+                    uart_tx_start_reg = 0;
                     next_state = WAIT_TX_DOWN_IDLE_ACK;
-                end else begin
-                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+                end
+            end
+            WAIT_TX_DOWN_IDLE_ACK: begin
+                if (!uart_tx_full) begin
+                    next_state = IDLE;
                 end
             end
             WAIT_NO_TX_FULL: begin
@@ -318,22 +359,17 @@ module debugger #(
                     next_state = WAIT_NO_TX_FULL;
                 end
             end
-            WAIT_TX_DOWN_IDLE_ACK: begin
-                if (!uart_tx_full) begin
-                    next_state = IDLE;
-                end else begin
-                    next_state = WAIT_TX_DOWN_IDLE_ACK;
-                end
-            end
+
             SEND_REGISTERS: begin
-                // Llenar el registro con ceros adicionales
-                padded_registers = {{((SIZE*NUM_REGISTERS + 7) / 8) * 8 - SIZE*NUM_REGISTERS{1'b0}}, i_registers_debug};
-                if (send_registers_counter < ((SIZE*NUM_REGISTERS + 7) / 8) * 8) begin
+                padded_registers = i_registers_debug;
+                if (send_registers_counter < 1024) begin
                     uart_tx_data_reg = padded_registers[send_registers_counter +: 8];
                     uart_tx_start_reg = 1;
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_REGISTERS;
                 end else begin
-                    next_state = WAIT_NO_TX_FULL;
+                    uart_tx_start_reg = 1;
+                    uart_tx_data_reg = "R"; // Send R immediately after data
+                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
                 end
             end
 
@@ -347,14 +383,15 @@ module debugger #(
             end
             
             SEND_IF_ID: begin
-                // Llenar el registro con ceros adicionales
-                padded_if_id = {{((IF_ID_SIZE + 7) / 8) * 8 - IF_ID_SIZE{1'b0}}, i_IF_ID};
-                if (send_if_id_counter < ((IF_ID_SIZE + 7) / 8) * 8) begin
+                padded_if_id = i_IF_ID;
+                if (send_if_id_counter < 32) begin
                     uart_tx_data_reg = padded_if_id[send_if_id_counter +: 8];
                     uart_tx_start_reg = 1;
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_IF_ID;
                 end else begin
-                    next_state = WAIT_NO_TX_FULL;
+                    uart_tx_start_reg = 1;
+                    uart_tx_data_reg = "R";
+                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
                 end
             end
 
@@ -368,14 +405,15 @@ module debugger #(
             end
             
             SEND_ID_EX: begin
-                // Llenar el registro con ceros adicionales
-                padded_id_ex = {{((ID_EX_SIZE + 7) / 8) * 8 - ID_EX_SIZE{1'b0}}, i_ID_EX};
-                if (send_id_ex_counter < ((ID_EX_SIZE + 7) / 8) * 8) begin
+                padded_id_ex = {7'b0, i_ID_EX};
+                if (send_id_ex_counter < 136) begin
                     uart_tx_data_reg = padded_id_ex[send_id_ex_counter +: 8];
                     uart_tx_start_reg = 1;
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_ID_EX;
                 end else begin
-                    next_state = WAIT_NO_TX_FULL;
+                    uart_tx_start_reg = 1;
+                    uart_tx_data_reg = "R";
+                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
                 end
             end
 
@@ -389,14 +427,15 @@ module debugger #(
             end
             
             SEND_EX_MEM: begin
-                // Llenar el registro con ceros adicionales
-                padded_ex_mem = {{((EX_MEM_SIZE + 7) / 8) * 8 - EX_MEM_SIZE{1'b0}}, i_EX_MEM};
-                if (send_ex_mem_counter < ((EX_MEM_SIZE + 7) / 8) * 8) begin
+                padded_ex_mem = {3'b0, i_EX_MEM};
+                if (send_ex_mem_counter < 80) begin
                     uart_tx_data_reg = padded_ex_mem[send_ex_mem_counter +: 8];
                     uart_tx_start_reg = 1;
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM;
                 end else begin
-                    next_state = WAIT_NO_TX_FULL;
+                    uart_tx_start_reg = 1;
+                    uart_tx_data_reg = "R";
+                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
                 end
             end
 
@@ -409,15 +448,17 @@ module debugger #(
                 end
             end
             
+
             SEND_MEM_WB: begin
-                // Llenar el registro con ceros adicionales
-                padded_mem_wb = {{((MEM_WB_SIZE + 7) / 8) * 8 - MEM_WB_SIZE{1'b0}}, i_MEM_WB};
-                if (send_mem_wb_counter < ((MEM_WB_SIZE + 7) / 8) * 8) begin
+                padded_mem_wb = {1'b0, i_MEM_WB};
+                if (send_mem_wb_counter < 72) begin
                     uart_tx_data_reg = padded_mem_wb[send_mem_wb_counter +: 8];
                     uart_tx_start_reg = 1;
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB;
                 end else begin
-                    next_state = WAIT_NO_TX_FULL;
+                    uart_tx_start_reg = 1;
+                    uart_tx_data_reg = "R";
+                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
                 end
             end
 
@@ -437,7 +478,9 @@ module debugger #(
                     uart_tx_start_reg = 1;
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY;
                 end else begin
-                    next_state = WAIT_NO_TX_FULL;
+                    uart_tx_start_reg = 1;
+                    uart_tx_data_reg = "R";
+                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
                 end
             end
 
@@ -491,7 +534,6 @@ module debugger #(
                                 next_write_addr = o_write_addr + 1; // Incrementar la dirección de escritura para la siguiente instrucción
                             end
                             if (next_instruction_counter == instruction_count && (instruction_count > 0)) begin // Si se han recibido todas las instrucciones
-                                o_mode = original_mode; // Restaurar el modo original
                                 next_write_addr = 0;
                                 next_state = WAIT_EXECUTE;
                             end else begin
@@ -553,16 +595,22 @@ module debugger #(
                 end
             end
             WAIT_EXECUTE: begin
-                if (uart_rx_done_reg) begin
-                    case (uart_rx_data_reg)
-                        8'h11: next_state = WAIT_NO_TX_FULL; // Comando para comenzar a ejecutar el pipeline
-                        default: next_state = WAIT_EXECUTE;
-                    endcase
-                    if (next_state == WAIT_EXECUTE) begin
-                        next_state = WAIT_RX_DONE_DOWN_WAIT_EXECUTE;
-                    end else begin
-                        next_state = WAIT_NO_TX_FULL;
-                    end
+                if (next_instruction_counter == instruction_count && instruction_count > 0) begin
+                    uart_tx_start_reg = 1;
+                    uart_tx_data_reg = "R";
+                    o_mode = original_mode;
+                    reset_active = 1;           // Activate reset pulse
+                    o_prog_reset = 1;           // Assert reset signal
+                    reset_counter = 0;          // Initialize counter
+                    next_state = PROGRAM_RESET;
+                end
+            end
+            
+            PROGRAM_RESET: begin
+                if (!reset_active) begin        // Wait for reset pulse to complete
+                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+                end else begin
+                    next_state = PROGRAM_RESET;
                 end
             end
             STEP_CLOCK: begin
@@ -650,16 +698,20 @@ module debugger #(
     end
     // Clock generation for step mode and continuous mode
     reg step_clk;
+    reg step_complete;
+
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             step_clk <= 0;
-        end else if (state == STEP_CLOCK) begin
+            step_complete <= 0;
+        end else if (state == STEP_CLOCK && !step_complete) begin
             step_clk <= 1;
-        end else begin
+            step_complete <= 1;
+        end else if (state != STEP_CLOCK) begin
             step_clk <= 0;
+            step_complete <= 0;
         end
     end
-
     assign o_debug_clk = (o_mode || ((i_pc >= stop_pc) && done_inst_write)) ? step_clk : i_clk;
 
     assign uart_tx_start = uart_tx_start_reg;

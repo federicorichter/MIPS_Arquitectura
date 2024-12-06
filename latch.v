@@ -12,7 +12,7 @@ module latch#(
     
     reg [BUS_DATA - 1 : 0]  data_reg, data_next;     
     
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
     begin
         if (rst) begin   
             data_reg <= 0;

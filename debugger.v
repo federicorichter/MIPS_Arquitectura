@@ -598,7 +598,7 @@ module debugger #(
                 if (next_instruction_counter == instruction_count && instruction_count > 0) begin
                     uart_tx_start_reg = 1;
                     uart_tx_data_reg = "R";
-                    o_mode = original_mode;
+                    o_mode = 1;
                     reset_active = 1;           // Activate reset pulse
                     o_prog_reset = 1;           // Assert reset signal
                     reset_counter = 0;          // Initialize counter

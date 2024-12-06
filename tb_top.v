@@ -42,15 +42,14 @@ module tb_top;
     reg pc_uart_tx_start_reg;
     reg pc_uart_rx_done_reg;
 
-    // Instantiate the top module
-    top #(
+    mips #(
         .SIZE(SIZE),
         .SIZE_OP(SIZE_OP),
         .CONTROL_SIZE(CONTROL_SIZE),
-        .IF_ID_SIZE(IF_ID_SIZE),
-        .ID_EX_SIZE(ID_EX_SIZE),
-        .EX_MEM_SIZE(EX_MEM_SIZE),
-        .MEM_WB_SIZE(MEM_WB_SIZE),
+        //.IF_ID_SIZE(IF_ID_SIZE),
+        //.ID_EX_SIZE(ID_EX_SIZE),
+        //.EX_MEM_SIZE(EX_MEM_SIZE),
+        //.MEM_WB_SIZE(MEM_WB_SIZE),
         .ADDR_WIDTH(ADDR_WIDTH),
         .MAX_INSTRUCTION(MAX_INSTRUCTION),
         .NUM_REGISTERS(NUM_REGISTERS),
@@ -62,8 +61,13 @@ module tb_top;
         .o_uart_tx(o_uart_tx),
         .i_clk(i_clk),
         .state_out(state_out),
+        // .instruction_count_out(instruction_count_out),
         .byte_counter_out(byte_counter_out),
-        .instruction_counter_out(instruction_counter_out)
+        .instruction_counter_out(instruction_counter_out),
+        .uart_rx_done_reg_out(uart_rx_done_reg_out)
+        //.uart_rx_data_out(uart_rx_data_out)
+        //.rx_done_tick(uart_rx_done),
+        //.tx_done_tick(uart_tx_start)
     );
 
     // Instantiate the second UART module (PC simulation)
@@ -72,7 +76,7 @@ module tb_top;
     reg [31:0]regs[31:0];
     reg done = 0;
     baudrate_generator #(
-        .COUNT(651)
+        .COUNT(66)
     ) baud_gen (
         .clk(i_clk),
         .reset(i_rst),
@@ -110,7 +114,7 @@ module tb_top;
     assign i_uart_rx = pc_uart_tx;
 
     // Clock generation
-    always #5 i_clk = ~i_clk;
+    always #50 i_clk = ~i_clk;
 
     // Testbench procedure
     initial begin

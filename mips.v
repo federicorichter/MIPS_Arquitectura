@@ -20,7 +20,8 @@ module mips #(
     output wire [7:0] uart_rx_data_out,
     output wire [4:0] instruction_count_out,
     output wire [4:0] instruction_counter_out,
-    output wire [4:0] byte_counter_out,
+    output wire [2:0] byte_counter_out,
+    output wire uart_rx_done_reg_out,
 
     input wire i_clk
     //output wire rx_done_tick, // Añadir señal de tick de recepción
@@ -154,7 +155,8 @@ module mips #(
         .uart_rx_data_out(uart_rx_data_out),
         .instruction_count_out(instruction_count_out),
         .instruction_counter_out(instruction_counter_out),
-        .byte_counter_out(byte_counter_out)
+        .byte_counter_out(byte_counter_out),
+        .uart_rx_done_reg_out(uart_rx_done_reg_out)
         //.uart_rx_empty(uart_rx_empty)
     );
 

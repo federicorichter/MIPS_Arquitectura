@@ -35,7 +35,8 @@ module debugger #(
     output reg [7:0] uart_rx_data_out,
     output reg [4:0] instruction_counter_out,
     output reg [4:0] instruction_count_out,
-    output reg [4:0] byte_counter_out
+    output reg [2:0] byte_counter_out,
+    output reg uart_rx_done_reg_out
     );
 
     // UART signals
@@ -52,7 +53,7 @@ module debugger #(
     reg [((MEM_WB_SIZE + 7) / 8) * 8 - 1:0] padded_mem_wb;
     reg [31:0] instruction_count = 0; // Cantidad de instrucciones a recibir
     reg [31:0] instruction_counter = 0; // Contador de instrucciones recibidas
-    reg [31:0] byte_counter = 0; // Contador de bytes recibidos
+    integer byte_counter = 1; // Contador de bytes recibidos
     wire [7:0] uart_rx_data;
     wire [7:0] uart_tx_data;
     wire uart_rx_done; 
@@ -106,6 +107,10 @@ module debugger #(
     localparam WAIT_RX_DOWN_STOP_PC = 39;
     localparam RECEIVE_INSTRUCTION_COUNT = 40;
     localparam WAIT_RX_DONE_DOWN_RECEIVE_INSTRUCTION_COUNT = 41;
+    localparam WAIT_RX_DONE_LOAD_PROGRAM_1 = 42;
+    localparam WAIT_RX_DONE_LOAD_PROGRAM_2 = 43;
+    localparam WAIT_RX_DONE_LOAD_PROGRAM_3 = 44;
+    localparam WAIT_RX_DONE_LOAD_PROGRAM_4 = 45;
 
 
     reg [5:0] state, next_state;
@@ -116,6 +121,15 @@ module debugger #(
     reg [31:0] send_ex_mem_counter = 0;
     reg [31:0] send_mem_wb_counter = 0;
     reg [31:0] send_memory_counter = 0;
+    reg [31:0] next_send_registers_counter = 0;
+    reg [31:0] next_send_if_id_counter = 0;
+    reg [31:0] next_send_id_ex_counter = 0;
+    reg [31:0] next_send_ex_mem_counter = 0;
+    reg [31:0] next_send_mem_wb_counter = 0;
+    reg [31:0] next_send_memory_counter = 0;
+    reg [31:0] next_instruction_counter = 0;
+    integer next_byte_counter = 0;
+    reg [ADDR_WIDTH-1:0] next_write_addr;
     reg [SIZE-1:0] stop_pc = 0;
     reg done_inst_write = 0;
     reg ctr_rx_done = 0;
@@ -123,7 +137,7 @@ module debugger #(
     // UART modules
     wire tick;
     baudrate_generator #(
-        .COUNT(66)
+        .COUNT(65)
     ) baud_gen (
         .clk(i_clk),
         .reset(i_reset),
@@ -163,7 +177,7 @@ module debugger #(
         o_inst_write_enable_reg = o_inst_write_enable;
     end
 
-    always @(posedge i_clk or posedge i_reset) begin
+    always @(negedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             uart_rx_done_reg <= 0;
             ctr_rx_done <= 0;
@@ -183,15 +197,40 @@ module debugger #(
 
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
+            send_registers_counter <= 0;
+            send_if_id_counter <= 0;
+            send_id_ex_counter <= 0;
+            send_ex_mem_counter <= 0;
+            send_mem_wb_counter <= 0;
+            send_memory_counter <= 0;
+            instruction_counter <= 0;
+            o_write_addr <= 0;
+            byte_counter <= 1;
+            byte_counter_out <= byte_counter[2:0]; // Cargar los 5 bits menos significativos
+            instruction_count_out <= instruction_count[4:0]; // Cargar los 5 bits menos significativos
+            instruction_counter_out <= instruction_counter[4:0]; // Cargar los 5 bits menos significativos
+        end else begin
+            send_registers_counter <= next_send_registers_counter;
+            send_if_id_counter <= next_send_if_id_counter;
+            send_id_ex_counter <= next_send_id_ex_counter;
+            send_ex_mem_counter <= next_send_ex_mem_counter;
+            send_mem_wb_counter <= next_send_mem_wb_counter;
+            send_memory_counter <= next_send_memory_counter;
+            instruction_counter <= next_instruction_counter;
+            o_write_addr <= next_write_addr;
+            byte_counter <= next_byte_counter;
+        end
+    end
+
+
+    always @(negedge i_clk or posedge i_reset) begin
+        if (i_reset) begin
             state <= IDLE;
             state_out <= IDLE;
             //uart_rx_done_reg <= 0;
         end else begin
             state <= next_state;
             state_out <= state;
-            instruction_count_out <= instruction_count[4:0]; // Cargar los 5 bits menos significativos
-            instruction_counter_out <= instruction_counter[4:0]; // Cargar los 5 bits menos significativos
-            byte_counter_out <= byte_counter[4:0]; // Cargar los 5 bits menos significativos
                 //uart_rx_done_reg <= 0;
         end
     end
@@ -201,16 +240,16 @@ module debugger #(
         case (state)
             IDLE: begin
                 uart_tx_start_reg = 0;
-                send_registers_counter = 0;
-                send_if_id_counter = 0;
-                send_id_ex_counter = 0;
-                send_ex_mem_counter = 0;
-                send_mem_wb_counter = 0;
-                send_memory_counter = 0;
-                byte_counter = 0;
-                instruction_counter = 0;
+                next_send_registers_counter = 0;
+                next_send_if_id_counter = 0;
+                next_send_id_ex_counter = 0;
+                next_send_ex_mem_counter = 0;
+                next_send_mem_wb_counter = 0;
+                next_send_memory_counter = 0;
+                next_byte_counter = 1;
+                next_instruction_counter = 0;
                 instruction_count = 0;
-                o_write_addr = 0;
+                next_write_addr = 0;
                 o_write_data = 0;
                 o_inst_write_enable = 0;
                 o_mode = 0;
@@ -286,9 +325,10 @@ module debugger #(
                     next_state = WAIT_NO_TX_FULL;
                 end
             end
+
             WAIT_UART_TX_FULL_DOWN_SEND_REGISTERS: begin
                 if (uart_tx_full) begin
-                    send_registers_counter = send_registers_counter + 8;
+                    next_send_registers_counter = send_registers_counter + 8;
                     next_state = SEND_REGISTERS;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_REGISTERS;
@@ -306,9 +346,10 @@ module debugger #(
                     next_state = WAIT_NO_TX_FULL;
                 end
             end
+
             WAIT_UART_TX_FULL_DOWN_SEND_IF_ID: begin
                 if (uart_tx_full) begin
-                    send_if_id_counter = send_if_id_counter + 8;
+                    next_send_if_id_counter = send_if_id_counter + 8;
                     next_state = SEND_IF_ID;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_IF_ID;
@@ -326,9 +367,10 @@ module debugger #(
                     next_state = WAIT_NO_TX_FULL;
                 end
             end
+
             WAIT_UART_TX_FULL_DOWN_SEND_ID_EX: begin
                 if (uart_tx_full) begin
-                    send_id_ex_counter = send_id_ex_counter + 8;
+                    next_send_id_ex_counter = send_id_ex_counter + 8;
                     next_state = SEND_ID_EX;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_ID_EX;
@@ -346,9 +388,10 @@ module debugger #(
                     next_state = WAIT_NO_TX_FULL;
                 end
             end
+
             WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM: begin
                 if (uart_tx_full) begin
-                    send_ex_mem_counter = send_ex_mem_counter + 8;
+                    next_send_ex_mem_counter = send_ex_mem_counter + 8;
                     next_state = SEND_EX_MEM;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM;
@@ -366,14 +409,16 @@ module debugger #(
                     next_state = WAIT_NO_TX_FULL;
                 end
             end
+
             WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB: begin
                 if (uart_tx_full) begin
-                    send_mem_wb_counter = send_mem_wb_counter + 8;
+                    next_send_mem_wb_counter = send_mem_wb_counter + 8;
                     next_state = SEND_MEM_WB;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB;
                 end
             end
+
             SEND_MEMORY: begin
                 o_clk_mem_read = 0;
                 if (send_memory_counter < 32) begin
@@ -384,14 +429,16 @@ module debugger #(
                     next_state = WAIT_NO_TX_FULL;
                 end
             end
+
             WAIT_UART_TX_FULL_DOWN_SEND_MEMORY: begin
                 if (uart_tx_full) begin
-                    send_memory_counter = send_memory_counter + 8;
+                    next_send_memory_counter = send_memory_counter + 8;
                     next_state = SEND_MEMORY;
                 end else begin
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY;
                 end
             end
+
             RECEIVE_INSTRUCTION_COUNT: begin
                 if (uart_rx_done_reg) begin
                     instruction_count = uart_rx_data_reg; // Recibir la cantidad de instrucciones
@@ -412,39 +459,76 @@ module debugger #(
             LOAD_PROGRAM: begin
                 if (uart_rx_done_reg) begin
                     case (byte_counter)
-                        1: instruction_buffer[7:0] = uart_rx_data_reg;
-                        2: instruction_buffer[15:8] = uart_rx_data_reg;
-                        3: instruction_buffer[23:16] = uart_rx_data_reg;
-                        4: instruction_buffer[31:24] = uart_rx_data_reg;
+                        1: begin
+                            uart_rx_done_reg_out = 1;
+                            instruction_buffer[7:0] = uart_rx_data_reg;
+                            next_state = WAIT_RX_DONE_LOAD_PROGRAM_1;
+                        end
+                        2: begin
+                            instruction_buffer[15:8] = uart_rx_data_reg;
+                            next_state = WAIT_RX_DONE_LOAD_PROGRAM_2;
+                        end
+                        3: begin
+                            instruction_buffer[23:16] = uart_rx_data_reg;
+                            next_state = WAIT_RX_DONE_LOAD_PROGRAM_3;
+                        end
+                        4: begin
+                            instruction_buffer[31:24] = uart_rx_data_reg;
+                            o_inst_write_enable = 1;
+                            o_write_data = instruction_buffer;
+                            next_instruction_counter = instruction_counter + 1;
+                            if (next_instruction_counter < instruction_count) begin
+                                next_write_addr = o_write_addr + 1; // Incrementar la dirección de escritura para la siguiente instrucción
+                            end
+                            if (next_instruction_counter == instruction_count && (instruction_count > 0)) begin // Si se han recibido todas las instrucciones
+                                o_mode = original_mode; // Restaurar el modo original
+                                next_write_addr = 0;
+                                next_state = WAIT_EXECUTE;
+                            end else begin
+                                next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
+                            end
+                        end
                         default: instruction_buffer = instruction_buffer;
                     endcase
-                    byte_counter = byte_counter + 1;
-                    if (byte_counter == 5) begin // Si se han recibido 4 bytes de la instrucción
-                        o_inst_write_enable = 1;
-                        o_write_data = instruction_buffer;
-                        byte_counter = 1; // Reiniciar el contador para la siguiente instrucción
-                        instruction_counter = instruction_counter + 1;
-                        if (instruction_counter < instruction_count) begin
-                            o_write_addr = o_write_addr + 1; // Incrementar la dirección de escritura para la siguiente instrucción
-                        end
-                    end
-                    if (instruction_counter == instruction_count && (instruction_count > 0)) begin // Si se han recibido todas las instrucciones
-                        o_mode = original_mode; // Restaurar el modo original
-                        o_write_addr = 0;
-                        next_state = WAIT_EXECUTE;
-                    end else begin
-                        next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
-                    end
+                end
+            end
+
+            WAIT_RX_DONE_LOAD_PROGRAM_1: begin
+                if (!uart_rx_done_reg) begin
+                    next_byte_counter = 2;
+                    next_state = LOAD_PROGRAM;
+                end else begin
+                    next_state = WAIT_RX_DONE_LOAD_PROGRAM_1;
+                end
+            end
+            
+            WAIT_RX_DONE_LOAD_PROGRAM_2: begin
+                if (!uart_rx_done_reg) begin
+                    next_byte_counter = 3;
+                    next_state = LOAD_PROGRAM;
+                end else begin
+                    next_state = WAIT_RX_DONE_LOAD_PROGRAM_2;
+                end
+            end
+            
+            WAIT_RX_DONE_LOAD_PROGRAM_3: begin
+                if (!uart_rx_done_reg) begin
+                    next_byte_counter = 4;
+                    next_state = LOAD_PROGRAM;
+                end else begin
+                    next_state = WAIT_RX_DONE_LOAD_PROGRAM_3;
                 end
             end
             
             WAIT_RX_DONE_DOWN_LOAD_PROGRAM: begin
                 if (!uart_rx_done_reg) begin
+                    next_byte_counter = 1;
                     next_state = LOAD_PROGRAM;
                 end else begin
                     next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
                 end
             end
+
             RECEIVE_ADDRESS: begin
                 if (uart_rx_done_reg) begin
                     o_debug_addr = uart_rx_data_reg[ADDR_WIDTH-1:0]; // Actualizar dirección de depuración

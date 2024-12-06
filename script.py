@@ -1,115 +1,166 @@
 import serial
 import time
+import sys
 
-# Configuración del puerto serial
-ser = serial.Serial('/dev/ttyUSB1', 9600, timeout=1, parity=serial.PARITY_NONE)  # Ajusta el puerto y la velocidad según sea necesario
+def setup_serial(port='/dev/ttyUSB1', baudrate=9600, timeout=1):
+    try:
+        ser = serial.Serial(port, baudrate, timeout=timeout, parity=serial.PARITY_NONE)
+        print(f"Serial port {port} opened successfully.")
+        return ser
+    except Exception as e:
+        print(f"Error opening serial port: {e}")
+        sys.exit(1)
 
-def send_uart_command(command):
+def load_instructions_from_coe(filename):
+    try:
+        with open(filename, 'r') as file:
+            lines = file.readlines()
+
+        instructions = []
+        for line in lines:
+            line = line.strip()
+            if line.startswith("memory_initialization_vector="):
+                vector_line = line.split('=')[1].strip()
+                vector_line = vector_line.rstrip(';')  # Remove trailing semicolon
+                instructions.extend(vector_line.split(','))  # Split instructions
+            elif not line.startswith("memory_initialization_radix") and line:
+                instructions.extend(line.rstrip(';').split(','))  # Handle subsequent lines
+        
+        # Convert hex strings to integers
+        return [int(instr.strip(), 16) for instr in instructions if instr.strip()]
+    
+    except FileNotFoundError:
+        print(f"Error: File '{filename}' not found.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error reading file '{filename}': {e}")
+        sys.exit(1)
+
+
+def send_uart_command(ser, command):
     ser.write(command.to_bytes(1, byteorder='big'))
     print(f"Command sent: {command:02X} (hex), {command:08b} (bin)")
-    input("Presiona Enter para continuar...")
 
-def send_uart_data(data, data_size):
+def send_uart_data(ser, data, data_size):
     for i in range(data_size // 8):
         byte = (data >> (8 * i)) & 0xFF
-        send_uart_command(byte)
+        send_uart_command(ser, byte)
         time.sleep(0.01)
-        print(f"Data sent: {byte:08b} (bin), {byte:02X} (hex)")
 
-def receive_data_from_uart(num_bytes):
+def receive_data_from_uart(ser, num_bytes):
     data = ser.read(num_bytes)
-    print("Data received:")
-    for byte in data:
-        print(byte, end=" ")  # Imprimir cada byte en crudo
-    print("")
-    
-def wait_for_ready():
+    if len(data) < num_bytes:
+        print(f"Warning: Received {len(data)} bytes, expected {num_bytes}.")
+    print("Data received:", " ".join(f"{byte:02X}" for byte in data))
+    return data
+
+def wait_for_ready(ser):
+    print("Waiting for 'R'...")
     while True:
         response = ser.read(1)
-        print(response)
         if response == b'R':
+            print("Ready signal received.")
             break
 
+def send_instructions(ser, instructions):
+    send_uart_command(ser, 0x07)  # Start loading program
+    send_uart_command(ser, len(instructions))  # Number of instructions
+    for instruction in instructions:
+        send_uart_data(ser, instruction, 32)
+
+def request_latch(ser, latch_command, expected_size):
+    send_uart_command(ser, latch_command)
+    return receive_data_from_uart(ser, expected_size)
+
+def menu():
+    print("\n--- UART Communication Menu ---")
+    print("1. Set Continuous Mode")
+    print("2. Set Step-by-step")
+    print("3. Send Instructions to Instruction Memory")
+    print("4. Start Program Execution")
+    print("5. Request IF/ID Latch")
+    print("6. Request ID/EX Latch")
+    print("7. Request EX/MEM Latch")
+    print("8. Request MEM/WB Latch")
+    print("9. Step Debugger")
+    print("10. Print memory data location")
+    print("11. Load instructions file")
+    print("0. Exit")
+    choice = input("Enter your choice: ")
+    return choice
+
 def main():
-    # Reset the system
-    time.sleep(0.01)
-
-    # Set continuous mode
-    send_uart_command(0x08)  # Command to set continuous mode    # Wait for 'R'
-    #receive_data_from_uart(4)
-    #wait_for_ready()
-    #time.sleep(0.01)
-
-    # Load a short test program
-    send_uart_command(0x07)  # Command to start loading program
-    send_uart_command(2)    # Cantidad de instrucciones a cargar
-
-    # Send the instructions
+    ser = setup_serial()
     instructions = [
         0x3C010001,  # LUI R1, 1
         0x3C030003,  # LUI R3, 3
         0x3C2B0001,  # NOP
-        #0x3C2B0001,  # NOP
-        #0xA8410001,  # SH, R1 -> MEM[1]
-        #0x3C2B0001,  # NOP
-        #0x3C2B0001,  # NOP
-        #0x88450001,  # LH, R5 <- MEM[1]
-        #0x00A31821,  # R7 = R5 + R3 => Anda
-        #0x3C2B0003,  # NOP
-        #0x3C2B0001,  # NOP
-        #0x3C2B0001,  # NOP
     ]
 
-    for instruction in instructions:
-        send_uart_data(instruction, 32)
+    latch_data = {
+        "5": (0x02, 4),  # IF/ID
+        "6": (0x03, 17), # ID/EX
+        "7": (0x04, 10), # EX/MEM
+        "8": (0x05, 9),  # MEM/WB
+    }
 
-    send_uart_command(0x11)  # Command to set step-by-step mode
-    wait_for_ready()         # Wait for 'R'
+    try:
+        while True:
+            choice = menu()
 
-    send_uart_command(0x0D)  # Command to start program
+            if choice == "1":
+                send_uart_command(ser, 0x08)  # Set Continuous Mode
 
-    time.sleep(10)  # Wait for some time
+            elif choice == "2":
+                send_uart_command(ser, 0x11)
+                wait_for_ready(ser)
 
-    send_uart_command(0x0B)
-    send_uart_command(0x02)
-    receive_data_from_uart(4)
-    wait_for_ready()
+            elif choice == "3":
+                send_instructions(ser, instructions)
 
-    send_uart_command(0x02)  # Command to request IF/ID latch
-    receive_data_from_uart(4)  # Receive 4 bytes of data
-    wait_for_ready()
+            elif choice == "4":
+                send_uart_command(ser, 0x0D)  # Start Program Execution
 
-    send_uart_command(0x03)  # Command to request ID/EX latch
-    receive_data_from_uart(17)  # Receive 17 bytes of data
-    wait_for_ready()
+            elif choice in latch_data:
+                latch_name = {"5": "IF/ID", "6": "ID/EX", "7": "EX/MEM", "8": "MEM/WB"}[choice]
+                print(f"Requesting {latch_name} latch...")
+                command, size = latch_data[choice]
+                data = request_latch(ser, command, size)
+                print(f"{latch_name} Data: {data}")
+                wait_for_ready(ser)
+           
+            elif choice == "9":
+                send_uart_command(ser, 0x0A) # Step debugger
 
-    send_uart_command(0x04)  # Command to request EX/MEM latch
-    receive_data_from_uart(10)  # Receive 10 bytes of data
-    wait_for_ready()
+            elif choice == "10":
+                send_uart_command(ser, 0x0B) # Print data memory
+                position = input("Enter memory position (0-1023): ")
+                if position.isdigit() and 0 <= int(position) <= 1023:
+                    send_uart_command(ser, int(position))
+                    wait_for_ready(ser)
+                else:
+                    print("Invalid position. Please enter a number between 0 and 1023.")
 
-    send_uart_command(0x05)  # Command to request MEM/WB latch
-    receive_data_from_uart(9)  # Receive 9 bytes of data
-    wait_for_ready()
+                
+            elif choice == "11": 
+                print("Loading instructions frome .coe file")
+                coe_file = "program.coe"
+                instructions = load_instructions_from_coe(coe_file)
 
-    send_uart_command(0x0A)  # Command to step
 
-    send_uart_command(0x02)  # Command to request IF/ID latch
-    receive_data_from_uart(4)  # Receive 4 bytes of data
+            elif choice == "0":
+                print("Exiting...")
+                break
 
-    send_uart_command(0x03)  # Command to request ID/EX latch
-    receive_data_from_uart(17)  # Receive 17 bytes of data
-    wait_for_ready()
+            else:
+                print("Invalid choice. Please try again.")
 
-    send_uart_command(0x04)  # Command to request EX/MEM latch
-    receive_data_from_uart(10)  # Receive 10 bytes of data
-    wait_for_ready()
+    except Exception as e:
+        print(f"Error: {e}")
 
-    send_uart_command(0x05)  # Command to request MEM/WB latch
-    receive_data_from_uart(9)  # Receive 9 bytes of data
-    wait_for_ready()
-
-    # Close the serial port
-    ser.close()
+    finally:
+        ser.close()
+        print("Serial port closed.")
 
 if __name__ == "__main__":
     main()

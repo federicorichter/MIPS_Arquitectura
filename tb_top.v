@@ -76,7 +76,7 @@ module tb_top;
     reg [31:0]regs[31:0];
     reg done = 0;
     baudrate_generator #(
-        .COUNT(66)
+        .COUNT(131)
     ) baud_gen (
         .clk(i_clk),
         .reset(i_rst),
@@ -114,7 +114,7 @@ module tb_top;
     assign i_uart_rx = pc_uart_tx;
 
     // Clock generation
-    always #50 i_clk = ~i_clk;
+    always #25 i_clk = ~i_clk;
 
     // Testbench procedure
     initial begin

@@ -2,7 +2,7 @@ import serial
 import time
 
 # Configuración del puerto serial
-ser = serial.Serial('/dev/ttyUSB1', 9600, timeout=1)  # Ajusta el puerto y la velocidad según sea necesario
+ser = serial.Serial('/dev/ttyUSB1', 9600, timeout=1, parity=serial.PARITY_NONE)  # Ajusta el puerto y la velocidad según sea necesario
 
 def send_uart_command(command):
     ser.write(command.to_bytes(1, byteorder='big'))
@@ -35,28 +35,29 @@ def main():
     time.sleep(0.01)
 
     # Set continuous mode
-    send_uart_command(0x08)  # Command to set continuous mode
+    send_uart_command(0x08)  # Command to set continuous mode    # Wait for 'R'
+    #receive_data_from_uart(4)
+    #wait_for_ready()
     #time.sleep(0.01)
 
     # Load a short test program
     send_uart_command(0x07)  # Command to start loading program
-    send_uart_command(12)    # Cantidad de instrucciones a cargar
+    send_uart_command(2)    # Cantidad de instrucciones a cargar
 
     # Send the instructions
     instructions = [
         0x3C010001,  # LUI R1, 1
         0x3C030003,  # LUI R3, 3
         0x3C2B0001,  # NOP
-        0x3C2B0001,  # NOP
-        0xA8410001,  # SH, R1 -> MEM[1]
-        0x3C2B0001,  # NOP
-        0x3C2B0001,  # NOP
-        0x88450001,  # LH, R5 <- MEM[1]
-        0x00A31821,  # R7 = R5 + R3 => Anda
-        0x3C2B0003,  # NOP
-        0x3C2B0001,  # NOP
-        0x3C2B0001,  # NOP
-        0x3C2B0001
+        #0x3C2B0001,  # NOP
+        #0xA8410001,  # SH, R1 -> MEM[1]
+        #0x3C2B0001,  # NOP
+        #0x3C2B0001,  # NOP
+        #0x88450001,  # LH, R5 <- MEM[1]
+        #0x00A31821,  # R7 = R5 + R3 => Anda
+        #0x3C2B0003,  # NOP
+        #0x3C2B0001,  # NOP
+        #0x3C2B0001,  # NOP
     ]
 
     for instruction in instructions:

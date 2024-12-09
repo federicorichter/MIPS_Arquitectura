@@ -60,7 +60,6 @@ set_property IOSTANDARD LVCMOS33 [get_ports {instruction_counter_out[3]}]
 set_property PACKAGE_PIN L1 [get_ports {instruction_counter_out[4]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {instruction_counter_out[4]}]
 
-
 set_property MARK_DEBUG true [get_nets {uut/dbg/byte_counter[0]}]
 set_property MARK_DEBUG true [get_nets {uut/dbg/byte_counter[1]}]
 set_property MARK_DEBUG true [get_nets {uut/dbg/byte_counter[2]}]
@@ -104,5 +103,3 @@ set_property MARK_DEBUG true [get_nets {uut/dbg/instruction_counter_reg_n_1_[13]
 set_property MARK_DEBUG true [get_nets {uut/dbg/instruction_counter_reg_n_1_[14]}]
 set_property MARK_DEBUG true [get_nets {uut/dbg/instruction_counter_reg_n_1_[15]}]
 set_property MARK_DEBUG true [get_nets {uut/dbg/instruction_counter_reg_n_1_[16]}]
-
-

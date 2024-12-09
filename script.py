@@ -2,7 +2,7 @@ import serial
 import time
 import sys
 
-def setup_serial(port='/dev/ttyUSB1', baudrate=9542, timeout=1):
+def setup_serial(port='/dev/ttyUSB1', baudrate=9600, timeout=1):
     try:
         ser = serial.Serial(port, baudrate, timeout=timeout, parity=serial.PARITY_NONE)
         print(f"Serial port {port} opened successfully.")
@@ -67,12 +67,19 @@ def send_instructions(ser, instructions):
     send_uart_command(ser, len(instructions))  # Number of instructions
     for instruction in instructions:
         send_uart_data(ser, instruction, 32)
+        time.sleep(0.01)
     wait_for_ready(ser)
 
 def request_latch(ser, latch_command, expected_size):
     send_uart_command(ser, latch_command)
     latchdata = receive_data_from_uart(ser, expected_size)
     return latchdata
+
+def request_instruction_memory(ser):
+    send_uart_command(ser, 0x10)
+    data = receive_data_from_uart(ser, 256)
+    wait_for_ready(ser)
+    return data
 
 def menu():
     print("\n--- UART Communication Menu ---")
@@ -88,13 +95,14 @@ def menu():
     print("10. Step Debugger")
     print("11. Print memory data location")
     print("12. Load instructions file")
+    print("13. Print instruction memory")
     print("0. Exit")
     choice = input("Enter your choice: ")
     return choice
 
 def main():
     ser = setup_serial()
-    instructions = [
+    instructions2 = [
         0x3C010001,  # LUI R1, 1
         0x3C030003,  # LUI R3, 3
         0x3C2B0001,  # NOP
@@ -107,6 +115,65 @@ def main():
         0x3C2B0003,  # NOP
         0x3C2B0001,  # NOP
         0x3C2B0001,  # NOP
+    ]
+
+    program1 = [
+        0x3C010003,  # LUI R1, 3
+        0x3C020001,  # LUI R2, 1
+        0x3C030009,  # LUI R3, 9
+        0x3C040007,  # LUI R4, 7
+        0x3C050003,  # LUI R5, 3
+        0x3C060065,  # LUI R6, 101
+        0x3C070019,  # LUI R7, 25
+        0x00022023,  # SUB R3, R1, R2 -> 2
+        0x00642821,  # ADD R5, R3, R4 -> 9
+        0x00663021,  # ADD R7, R3, R6 -> 103
+        0x00652821,  # ADD R15, R3, R5
+        0x3C0F012C,  # LUI R15, 300
+        0x3C010003,  # LUI R1, 3
+        0x3C010003,  # LUI R1, 3
+        0x3C010003   # LUI R1, 3
+    ]
+
+    program2 = [
+        0x3C010008,  # LUI R1, 8
+        0x3C030006,  # LUI R3, 6
+        0x3C030006,  # LUI R3, 6
+        0x3C030006,  # LUI R3, 6
+        0x00024809,  # JALR R1, R9
+        0x3C030003,  # LUI R3, 3
+        0x3C03000F,  # LUI R3, 15
+        0x3C03000D,  # LUI R3, 13
+        0x3C030005,  # LUI R3, 5
+        0x3C030004,  # LUI R3, 4
+        0x3C030006   # LUI R3, 6
+    ]
+
+    program3 = [
+        0x3C010001,  # LUI R1, 1
+        0x3C030003,  # LUI R3, 3
+        0x3C2B0001,  # NOP
+        0x3C2B0001,  # NOP
+        0xA8410001,  # SH, R1 -> MEM[1]
+        0x3C2B0001,  # NOP
+        0x3C2B0001,  # NOP
+        0x88450001,  # LH, R5 <- MEM[1]
+        0x00A31821,  # R7 = R5 + R3 => Anda
+        0x3C2B0003,  # NOP
+        0x3C2B0001,  # NOP
+        0x3C2B0001   # NOP
+    ]
+
+    instructions = [
+        #0x00000000,
+        0x2001000F,  # ADDI R1, R0, 15
+        0xA0010000,  # SB R1, 0(0)
+        0x20020007,  # ADDI R2, R1, 7
+        0xA0020008,  # SB R2, 8(0)
+        0x80030008,  # LB R3, 8(0)
+        0x3004000B,  # ANDI R4, R3, 11
+        0x20010410,  # ADDI R4, R4, 272
+        0x00000000   # Primer set de prueba
     ]
 
     latch_data = {
@@ -160,6 +227,12 @@ def main():
                 print("Loading instructions frome .coe file")
                 coe_file = "program.coe"
                 instructions = load_instructions_from_coe(coe_file)
+
+            elif choice == "13":
+                print("Requesting instruction memory...")
+                data = request_instruction_memory(ser)
+                print(f"Instruction Memory Data: {data}")
+                print(f"Instruction Memory Data in bits: {' '.join(f'{byte:08b}' for byte in data)}")
 
 
             elif choice == "0":

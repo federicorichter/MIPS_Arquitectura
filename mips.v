@@ -22,6 +22,7 @@ module mips #(
     output wire [4:0] instruction_counter_out,
     output wire [2:0] byte_counter_out,
     output wire uart_rx_done_reg_out,
+    //output reg [4:0] pc_out,
 
     input wire i_clk
     //output wire rx_done_tick, // Añadir señal de tick de recepción
@@ -84,6 +85,7 @@ module mips #(
     reg [MEM_WB_SIZE-1:0] mem_to_wb_reg;
     wire o_mode; // Wire to indicate the mode of operation for debugging
     wire [NUM_REGISTERS*SIZE-1:0]i_registers_debug;
+    wire [SIZE*MEM_SIZE-1:0] i_debug_instructions;
     wire uart_rx_done, uart_tx_start, uart_tx_full, uart_rx_empty;
     wire [7:0] uart_rx_data, uart_tx_data;
     wire baud_tick;
@@ -141,6 +143,7 @@ module mips #(
         .i_EX_MEM(ex_to_mem_reg),
         .i_MEM_WB(mem_to_wb_reg),
         .i_debug_data(debug_data),
+        .i_debug_instructions(i_debug_instructions),
         .i_pc(pc_value),
         .o_mode(o_mode),
         .o_debug_clk(clk_to_use),
@@ -159,6 +162,7 @@ module mips #(
         .byte_counter_out(byte_counter_out),
         .uart_rx_done_reg_out(uart_rx_done_reg_out),
         .o_prog_reset(reset_debug)
+        //.i_pc_out(pc_out)
         //.uart_rx_empty(uart_rx_empty)
     );
 
@@ -192,15 +196,17 @@ module mips #(
     ) IF (
         .i_clk(clk_to_use),
         .i_clk_write(i_clk),
+        .i_rst_debug(i_rst || reset_debug),
         .i_rst(i_rst),
         .i_stall(i_stall || o_writing_instruction_mem || hazard_output), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
         .i_pc(pc_if),
-        .i_mux_selec(pc_source), // selector del mux
+        //.i_mux_selec(pc_source), // selector del mux
         .o_instruction(instruction), // salida:instruccion
         .o_pc(pc_value), // salida: contador de programa
         .i_inst_write_enable(i_inst_write_enable), // habilitación de escritura
         .i_write_addr(i_write_addr), // dirección de escritura
         .i_write_data(i_write_data), // datos de escritura
+        .o_debug_instruction(i_debug_instructions), // Salida de instrucciones de depuración
         .o_writing_instruction_mem(o_writing_instruction_mem) // Señal de control para indicar escritura en memoria de instrucciones
     );
 

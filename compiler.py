@@ -24,6 +24,7 @@ def parse_register(reg):
     """Parses a MIPS register and returns its binary representation."""
     if not reg.startswith("$"):
         raise ValueError(f"Invalid register format: {reg}")
+    reg = reg.replace(",", "").strip()
     return int(reg[1:])
 
 def assemble_line(line):
@@ -53,11 +54,16 @@ def assemble_line(line):
 
     elif opcode in INSTRUCTION_SET["I"]:
         opc = INSTRUCTION_SET["I"][opcode]
-        rt = parse_register(operands[0])
-        print(str(rt))
-        rs = parse_register(operands[1])
-        imm = int(operands[2]) & 0xFFFF
-        binary_instruction = (opc << 26) | (rs << 21) | (rt << 16) | imm
+        if opcode == "LUI":
+            print(operands[0])
+            rt = parse_register(operands[0])
+            imm = int(operands[2]) & 0xFFFF
+            binary_instruction = (opc << 26) | (00000 << 21) | (rt << 16) | imm
+        else :
+            rt = parse_register(operands[0])
+            rs = parse_register(operands[1])
+            imm = int(operands[2]) & 0xFFFF
+            binary_instruction = (opc << 26) | (rs << 21) | (rt << 16) | imm
 
     elif opcode in INSTRUCTION_SET["J"]:
         opc = INSTRUCTION_SET["J"][opcode]

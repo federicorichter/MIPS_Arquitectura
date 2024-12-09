@@ -28,6 +28,7 @@ module control_alu#(
             {ALU_ADD, 1'b1} : alu_func = 6'b100001; //unsigned add
             {ALU_SLT, 1'b1} : alu_func = 6'b101001; //unsigned slt
             {ALU_AND, 1'b0} : alu_func = 6'b100100; 
+            {ALU_AND, 1'b1} : alu_func = 6'b100100; 
             {ALU_OR,1'b0}  : alu_func = 6'b100101;
             {ALU_XOR,1'b0} : alu_func = 6'b100110;
             default : alu_func = i_alu_function;

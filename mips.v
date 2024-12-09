@@ -106,8 +106,8 @@ module mips #(
     wire reset_debug;
 
 
-    always @(posedge i_clk) begin
-        if (i_rst) begin
+    always @(posedge i_clk or posedge i_rst or posedge reset_debug) begin
+        if (i_rst || reset_debug) begin
             if_to_id_reg <= 0;
             id_to_ex_reg <= 0;
             ex_to_mem_reg <= 0;
@@ -191,6 +191,7 @@ module mips #(
         .SIZE(32)
     ) IF (
         .i_clk(clk_to_use),
+        .i_clk_write(i_clk),
         .i_rst(i_rst),
         .i_stall(i_stall || o_writing_instruction_mem || hazard_output), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
         .i_pc(pc_if),
@@ -208,7 +209,7 @@ module mips #(
     )
     IF_ID (
         .clk(clk_to_use),
-        .rst(i_rst || if_flush),
+        .rst(i_rst || reset_debug || if_flush),
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
         .i_data({
             //pc_plus,//PC + 4
@@ -223,7 +224,7 @@ module mips #(
     )
     IF_ID2 (
         .clk(clk_to_use),
-        .rst(i_rst),
+        .rst(i_rst || reset_debug),
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
         .i_data({
             pc_plus_4//PC + 4
@@ -304,7 +305,7 @@ module mips #(
     ) ID (
         .i_stall(i_stall || o_writing_instruction_mem),
         .i_instruction(if_to_id[31:0]),
-        .rst(i_rst),
+        .rst(i_rst || reset_debug),
         .clk(clk_to_use),
         .i_pc_if(if_to_id[63:32]),
         .i_jump_brch(control_signals[JUMP_B]),
@@ -342,7 +343,7 @@ module mips #(
         .BUS_DATA(129)
     ) ID_EX (
         .clk(clk_to_use),
-        .rst(i_rst),
+        .rst(i_rst || reset_debug),
         .i_enable(~i_stall && ~o_writing_instruction_mem),
         .i_data({
             rs_dir, // [128:124]
@@ -394,7 +395,7 @@ module mips #(
         .BUS_DATA(78)
     ) EX_MEM (
         .clk(clk_to_use),
-        .rst(i_rst),
+        .rst(i_rst || reset_debug),
         .i_enable(~i_stall && ~o_writing_instruction_mem),
         .i_data({
             id_to_ex[3], // J_RET_DST[77]
@@ -419,7 +420,7 @@ module mips #(
     ) MEM (
         .clk(clk_to_use),
         .clk2(i_clk),
-        .rst(i_rst),
+        .rst(i_rst || reset_debug),
         .i_mem_write(ex_to_mem[71]),
         .i_mem_read(ex_to_mem[70]),
         .i_zero_alu(ex_to_mem[69]),
@@ -439,7 +440,7 @@ module mips #(
         .BUS_DATA(72)
     ) MEM_WB (
         .clk(clk_to_use),
-        .rst(i_rst),
+        .rst(i_rst || reset_debug),
         .i_enable(~i_stall && ~o_writing_instruction_mem),
         .i_data({
             ex_to_mem[77], //destiny return address [71]

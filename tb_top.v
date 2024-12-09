@@ -128,10 +128,10 @@ module tb_top;
         #1000 i_rst = 0;
 
         // Set continuous mode
-        send_uart_command(8'h08); // Command to set continuous mode
+        send_uart_command(8'h09); // Command to set continuous mode
         // Load a short test program
         send_uart_command(8'h07); // Command to start loading program
-        send_uart_command(8'd11); // Cantidad de instrucciones a cargar
+        send_uart_command(8'd12); // Cantidad de instrucciones a cargar
         // Send the instructions
         /*send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
         send_uart_data(32'b00111100000000100000000000000001, 32); // R2 = 1
@@ -176,10 +176,11 @@ module tb_top;
      
         //send_uart_command(8'h0E); 
 
-        //send_uart_command(8'h07); // Command to start program        
+        //send_uart_command(8'h07); // Command to start program 
+        wait_for_ready();
+
         send_uart_command(8'h0D); // Command to start program
-        
-        #3000000;
+                
         send_uart_command(8'h0B);
         send_uart_command(8'h02);
         receive_data_from_uart(4);
@@ -196,7 +197,7 @@ module tb_top;
         //wait_for_ready(); // Wait for 'R'
 
         send_uart_command(8'h02); // Command to request IF/ID latch
-        receive_data_from_uart(4); // Receive 4 bytes of data
+        receive_data_from_uart(8); // Receive 4 bytes of data
 
         wait_for_ready(); // Wait for 'R'
 
@@ -211,12 +212,69 @@ module tb_top;
         send_uart_command(8'h05); // Command to request MEM/WB latch
         receive_data_from_uart(9); // Receive 9 bytes of data
         wait_for_ready(); // Wait for 'R'
-
-        send_uart_command(8'h09); // Command to step
         
         send_uart_command(8'h01);
         receive_data_from_uart(128); // Receive 9 bytes of data
         wait_for_ready(); // Wait for 'R'
+
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+
+        send_uart_command(8'h02); // Command to request IF/ID latch
+        receive_data_from_uart(8); // Receive 4 bytes of data
+
+        wait_for_ready(); // Wait for 'R'
+
+        send_uart_command(8'h03); // Command to request ID/EX latch
+        receive_data_from_uart(17); // Receive 17 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h04); // Command to request mem ex latch
+        receive_data_from_uart(10); // Receive 17 bytes of data
+        wait_for_ready;
+
+        send_uart_command(8'h05); // Command to request MEM/WB latch
+        receive_data_from_uart(9); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h01);
+        receive_data_from_uart(128); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h08); // Command to contiunous
+        
+        #5000000;
+
+
+        send_uart_command(8'h02); // Command to request IF/ID latch
+        receive_data_from_uart(8); // Receive 4 bytes of data
+
+        wait_for_ready(); // Wait for 'R'
+
+        send_uart_command(8'h03); // Command to request ID/EX latch
+        receive_data_from_uart(17); // Receive 17 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h04); // Command to request mem ex latch
+        receive_data_from_uart(10); // Receive 17 bytes of data
+        wait_for_ready;
+
+        send_uart_command(8'h05); // Command to request MEM/WB latch
+        receive_data_from_uart(9); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h01);
+        receive_data_from_uart(128); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+
 
 
         // Finish simulation

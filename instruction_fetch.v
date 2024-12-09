@@ -4,6 +4,7 @@ module instruction_fetch #(
     parameter ADDR_WIDTH = $clog2(MAX_INSTRUCTION)
 )(
     input wire i_clk,
+    input wire i_clk_write,  // Nuevo reloj para escritura
     input wire i_rst,
     input wire i_stall,
     input [SIZE-1:0] i_pc,
@@ -14,7 +15,7 @@ module instruction_fetch #(
     output wire [SIZE-1:0] o_instruction,
     output wire [SIZE-1:0] o_pc,
     output wire o_writing_instruction_mem
-); 
+);
 
     // Internal registers and signals
     reg [SIZE-1:0] pc;
@@ -23,7 +24,7 @@ module instruction_fetch #(
     integer i;
 
     // Main sequential logic
-    always @(posedge i_clk or posedge i_rst) begin
+    always @(posedge i_clk_write or posedge i_rst) begin
         if (i_rst) begin
             // Reset all memory locations and control signals
             for (i = 0; i < MAX_INSTRUCTION; i = i + 1) begin
@@ -45,15 +46,15 @@ module instruction_fetch #(
                 // Transition from write to read mode
                 pc <= 0; // Force PC to 0 during transition
             end
-            else if (!i_stall && !i_inst_write_enable) begin
-                // Normal read mode operation
-                if (pc < MAX_INSTRUCTION - 1) begin
-                    pc <= i_pc;
-                end 
-                else begin
-                    pc <= 0;
-                end
-            end
+        end
+    end
+
+    always @(posedge i_clk) begin
+        if (!i_stall && !i_inst_write_enable) begin
+            // Normal read mode operation
+            if (pc < MAX_INSTRUCTION - 1) begin
+                pc <= i_pc;
+            end 
         end
     end
 

@@ -532,7 +532,7 @@ module debugger #(
                                 next_write_addr = o_write_addr + 1; // Incrementar la dirección de escritura para la siguiente instrucción
                             end
                             if (next_instruction_counter == instruction_count && (instruction_count > 0)) begin // Si se han recibido todas las instrucciones
-                                next_write_addr = 0;
+                                //next_write_addr = 0;
                                 next_state = WAIT_EXECUTE;
                             end else begin
                                 next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;

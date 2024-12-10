@@ -108,7 +108,7 @@ module mips #(
     wire reset_debug;
 
 
-    always @(posedge i_clk or posedge i_rst or posedge reset_debug) begin
+    always @(posedge i_clk or posedge i_rst or posedge reset_debug or posedge if_flush) begin
         if (i_rst || reset_debug) begin
             if_to_id_reg <= 0;
             id_to_ex_reg <= 0;
@@ -116,8 +116,14 @@ module mips #(
             mem_to_wb_reg <= 0;
             //pc_if <= 0;
         end
+        else if (if_flush) begin
+            if_to_id_reg <= 0;
+        end
         else begin
-            if_to_id_reg <= if_to_id;
+            if(~i_stall && ~hazard_output && ~o_writing_instruction_mem) begin
+                if_to_id_reg[31:0] <= instruction;
+                if_to_id_reg[63:32] <= pc_plus_4;
+            end
             id_to_ex_reg <= id_to_ex;
             ex_to_mem_reg <= ex_to_mem;
             mem_to_wb_reg <= mem_to_wb;
@@ -210,41 +216,42 @@ module mips #(
         .o_writing_instruction_mem(o_writing_instruction_mem) // Señal de control para indicar escritura en memoria de instrucciones
     );
 
-    latch #(
-        .BUS_DATA(32)
-    )
-    IF_ID (
-        .clk(clk_to_use),
-        .rst(i_rst || reset_debug || if_flush),
-        .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
-        .i_data({
-            //pc_plus,//PC + 4
-            instruction //PC
-         
-        }),
-        .o_data(if_to_id[31:0])
-    );
+    wire [64:0]fake;
+    //latch #(
+    //    .BUS_DATA(32)
+    //)
+    //IF_ID (
+    //    .clk(clk_to_use),
+    //    .rst(i_rst || reset_debug || if_flush),
+    //    .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
+    //    .i_data({
+    //        //pc_plus,//PC + 4
+    //        instruction //PC
+    //     
+    //    }),
+    //    .o_data(if_to_id[31:0])
+    //);
 
-    latch #(
-        .BUS_DATA(32)
-    )
-    IF_ID2 (
-        .clk(clk_to_use),
-        .rst(i_rst || reset_debug),
-        .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
-        .i_data({
-            pc_plus_4//PC + 4
-            //instruction //PC
-         
-        }),
-        .o_data(if_to_id[63:32])
-    );
+    //latch #(
+    //    .BUS_DATA(32)
+    //)
+    //IF_ID2 (
+    //    .clk(clk_to_use),
+    //    .rst(i_rst || reset_debug),
+    //    .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
+    //    .i_data({
+    //        pc_plus_4//PC + 4
+    //        //instruction //PC
+    //     
+    //    }),
+    //    .o_data(fake[63:32])
+    //);
     
     general_control #(
         .CONTROL_SIZE(CONTROL_SIZE)
     )
     control_unit(
-        .i_func(if_to_id[5:0]),
+        .i_func(if_to_id_reg[5:0]),
         .i_enable(~hazard_output),
         .i_opcode(operand),
         .o_control(control_signals)
@@ -297,7 +304,7 @@ module mips #(
         .SIZE(SIZE)
     ) adder_pc_immediate(
         .i_stall(i_stall || i_inst_write_enable),
-        .i_a(if_to_id[63:32]),
+        .i_a(if_to_id_reg[63:32]),
         .i_b(immediate),
         .o_result(immediate_plus_pc)
     );
@@ -310,10 +317,10 @@ module mips #(
         .SIZE_OP(6)
     ) ID (
         .i_stall(i_stall || o_writing_instruction_mem),
-        .i_instruction(if_to_id[31:0]),
+        .i_instruction(if_to_id_reg[31:0]),
         .rst(i_rst || reset_debug),
         .clk(clk_to_use),
-        .i_pc_if(if_to_id[63:32]),
+        .i_pc_if(if_to_id_reg[63:32]),
         .i_jump_brch(control_signals[JUMP_B]),
         .i_write_enable(mem_to_wb[1]),
         .i_w_dir(address_write_reg),

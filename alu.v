@@ -25,7 +25,7 @@ module ALU #(
             6'b101000: o_result = $signed(i_A) < $signed(i_B) ? 1 : 0;  // SLT (Set on less than)
             6'b101001: o_result = i_A < i_B ? 1 : 0;  // SLTU (Set on less than unsigned)
             
-            default: o_result = 6'b111111;  // Resultado por defecto
+            default: o_result = i_A + i_B;  // Resultado por defecto
         endcase
     end
 

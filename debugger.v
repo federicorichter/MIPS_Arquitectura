@@ -8,7 +8,8 @@ module debugger #(
     parameter IF_ID_SIZE = 64,
     parameter ID_EX_SIZE = 129,
     parameter EX_MEM_SIZE = 77,
-    parameter MEM_WB_SIZE = 71
+    parameter MEM_WB_SIZE = 71,
+    parameter STEP_CYCLES = 3
 )(
     input wire i_clk,
     input wire i_reset,
@@ -65,6 +66,10 @@ module debugger #(
     reg [ADDR_WIDTH-1:0] o_write_addr = 0; // Dirección de escritura
     reg [SIZE-1:0] o_write_data = 0; // datos de escritura
     reg o_inst_write_enable = 0;
+    reg step_clk;
+    reg step_complete;
+    reg [31:0] step_counter;
+    reg step_active;
     
 
     // State machine states
@@ -117,6 +122,8 @@ module debugger #(
     localparam PROGRAM_RESET = 46;
     localparam SEND_DEBUG_INSTRUCTIONS = 48;
     localparam WAIT_UART_TX_FULL_DOWN_SEND_DEBUG_INSTRUCTIONS = 49;
+    localparam SEND_PC = 50;
+    localparam WAIT_UART_TX_FULL_DOWN_SEND_PC = 51;
 
 
 
@@ -143,9 +150,10 @@ module debugger #(
     reg ctr_rx_done = 0;
     reg [3:0] reset_counter;
     reg reset_active;
-
     reg [31:0] send_debug_instructions_counter = 0;
     reg [31:0] next_send_debug_instructions_counter = 0;
+    reg next_prog_reset;
+    reg [3:0] next_reset_counter;
     // UART modules
     wire tick;
     baudrate_generator #(
@@ -260,16 +268,8 @@ module debugger #(
         end else begin
             state <= next_state;
             state_out <= state;
-            
-            // Handle reset pulse timing            // Handle reset pulse timing
-            if (reset_active) begin
-                if (reset_counter == 15) begin  // Generate 16-cycle reset pulse
-                    reset_active <= 0;
-                    o_prog_reset <= 0;
-                end else begin
-                    reset_counter <= reset_counter + 1;
-                end
-            end
+            reset_counter <= next_reset_counter;
+            o_prog_reset <= next_prog_reset;
         end
     end
 
@@ -282,12 +282,14 @@ module debugger #(
         next_send_mem_wb_counter = send_mem_wb_counter;
         next_send_memory_counter = send_memory_counter;
         next_instruction_counter = instruction_counter;
+        next_prog_reset = o_prog_reset;  // Valor por defecto
+        next_reset_counter = reset_counter;  // Valor por defecto
         next_byte_counter = byte_counter;
         next_instruction_count = instruction_count;
         next_write_addr = o_write_addr;
         next_send_debug_instructions_counter = send_debug_instructions_counter;
         uart_tx_start_reg = 0; // Reset TX start by default
-        stop_pc = instruction_count + 5;
+        stop_pc = instruction_count + 10;
         case (state)
             IDLE: begin
                 uart_tx_start_reg = 0;
@@ -299,6 +301,8 @@ module debugger #(
                 next_send_memory_counter = 0;
                 next_byte_counter = 1;
                 next_instruction_counter = 0;
+                next_prog_reset = 0;
+                next_reset_counter = 0;
                 uart_tx_data_reg = 0;
                 padded_ex_mem = 0;
                 padded_id_ex = 0;
@@ -341,6 +345,7 @@ module debugger #(
                             next_state = WAIT_RX_DONE_DOWN_IDLE;
                         end
                         8'h10: next_state = SEND_DEBUG_INSTRUCTIONS; // Nueva opción para imprimir instrucciones de depuración
+                        8'h11: next_state = SEND_PC; // New command for sending PC
                     
                         default: next_state = WAIT_RX_DONE_DOWN_IDLE;
                     endcase
@@ -630,25 +635,50 @@ module debugger #(
             WAIT_EXECUTE: begin
                 if (next_instruction_counter == instruction_count && instruction_count > 0) begin
                     o_write_data = 0;
-                    reset_active = 1;           // Activate reset pulse
-                    o_prog_reset = 1;           // Assert reset signal
-                    reset_counter = 0;          // Initialize counter
-                    next_state = PROGRAM_RESET;
-                end
-            end
-            
-            PROGRAM_RESET: begin
-                if (!reset_active) begin        // Wait for reset pulse to complete
-                    uart_tx_start_reg = 1;      // Now send 'R' after reset is complete
-                    uart_tx_data_reg = "R";
-                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
-                end else begin
+                    reset_active = 1;           
+                    next_prog_reset = 1;        
+                    next_reset_counter = 0;     
                     next_state = PROGRAM_RESET;
                 end
             end
 
+            PROGRAM_RESET: begin
+                if (reset_counter == 15) begin
+                    next_prog_reset = 0;
+                    uart_tx_start_reg = 1;
+                    uart_tx_data_reg = "R";
+                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+                end else begin
+                    next_prog_reset = 1;
+                    next_reset_counter = reset_counter + 1;
+                    next_state = PROGRAM_RESET;
+                end
+            end
+            
+            SEND_PC: begin
+                uart_tx_data_reg = i_pc[send_memory_counter +: 8];
+                uart_tx_start_reg = 1;
+                if (send_memory_counter < 32) begin
+                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_PC;
+                end else begin
+                    uart_tx_data_reg = "R";
+                    next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+                end
+            end
+
+            WAIT_UART_TX_FULL_DOWN_SEND_PC: begin
+                if (uart_tx_full) begin
+                    next_send_memory_counter = send_memory_counter + 8;
+                    next_state = SEND_PC;
+                end else begin
+                    next_state = WAIT_UART_TX_FULL_DOWN_SEND_PC;
+                end
+            end
+
             STEP_CLOCK: begin
-                next_state = IDLE;
+                if (!step_active || (step_active && step_counter == STEP_CYCLES - 1)) begin
+                    next_state = IDLE;
+                end
             end
 
             WAIT_RX_DOWN_STOP_PC: begin
@@ -732,19 +762,31 @@ module debugger #(
         endcase
     end
     // Clock generation for step mode and continuous mode
-    reg step_clk;
-    reg step_complete;
+
 
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
+            step_counter <= 0;
+            step_active <= 0;
             step_clk <= 0;
-            step_complete <= 0;
-        end else if (state == STEP_CLOCK && !step_complete) begin
-            step_clk <= 1;
-            step_complete <= 1;
-        end else if (state != STEP_CLOCK) begin
-            step_clk <= 0;
-            step_complete <= 0;
+        end else begin
+            if (state == STEP_CLOCK) begin
+                if (!step_active) begin
+                    step_active <= 1;
+                    step_counter <= 0;
+                    step_clk <= 1;  // Start with rising edge
+                end else if (step_counter < STEP_CYCLES - 1) begin
+                    step_counter <= step_counter + 1;
+                    step_clk <= ~step_clk;  // Toggle clock
+                end else begin
+                    step_active <= 0;
+                    step_clk <= 0;
+                end
+            end else begin
+                step_active <= 0;
+                step_clk <= 0;
+                step_counter <= 0;
+            end
         end
     end
     assign o_debug_clk = (o_mode || ((i_pc > stop_pc))) ? step_clk : i_clk;

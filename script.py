@@ -96,28 +96,15 @@ def menu():
     print("11. Print memory data location")
     print("12. Load instructions file")
     print("13. Print instruction memory")
+    print("14. Request PC")  # Nueva opción para solicitar el PC
     print("0. Exit")
     choice = input("Enter your choice: ")
     return choice
 
 def main():
     ser = setup_serial()
-    instructions2 = [
-        0x3C010001,  # LUI R1, 1
-        0x3C030003,  # LUI R3, 3
-        0x3C2B0001,  # NOP
-        0x3C2B0001,  # NOP
-        0xA8410001,  # SH, R1 -> MEM[1]
-        0x3C2B0001,  # NOP
-        0x3C2B0001,  # NOP
-        0x88450001,  # LH, R5 <- MEM[1]
-        0x00A31821,  # R7 = R5 + R3 => Anda
-        0x3C2B0003,  # NOP
-        0x3C2B0001,  # NOP
-        0x3C2B0001,  # NOP
-    ]
 
-    program1 = [
+    program2 = [
         0x3C010003,  # LUI R1, 3
         0x3C020001,  # LUI R2, 1
         0x3C030009,  # LUI R3, 9
@@ -135,7 +122,7 @@ def main():
         0x3C010003   # LUI R1, 3
     ]
 
-    program2 = [
+    instructions = [
         0x3C010008,  # LUI R1, 8
         0x3C030006,  # LUI R3, 6
         0x3C030006,  # LUI R3, 6
@@ -149,7 +136,7 @@ def main():
         0x3C030006   # LUI R3, 6
     ]
 
-    program3 = [
+    instructionsr = [
         0x3C010001,  # LUI R1, 1
         0x3C030003,  # LUI R3, 3
         0x3C2B0001,  # NOP
@@ -164,7 +151,18 @@ def main():
         0x3C2B0001   # NOP
     ]
 
-    instructions = [
+    instructionsww = [
+        0b00100000000000010000000000001111,  # ADDI R1, R0, 15
+        0b10100000000000010000000000000000,  # SB R1, 0(0)
+        0b00100000001000100000000000000111,  # ADDI R2, R1, 7
+        0b10100000000000100000000000001000,  # SB R2, 8(0)
+        0b10000000000000110000000000001000,  # LB R3, 8(0)
+        0b00110000011001000000000000001011,  # ANDI R4, R3, 11
+        0b00100000100000010000000100010000,  # ADDI R4, R4, 272
+        0b00000000000000000000000000000000   # Primer set de prueba
+    ]
+
+    instructionssss = [
         #0x00000000,
         0x2001000F,  # ADDI R1, R0, 15
         0xA0010000,  # SB R1, 0(0)
@@ -234,6 +232,12 @@ def main():
                 print(f"Instruction Memory Data: {data}")
                 print(f"Instruction Memory Data in bits: {' '.join(f'{byte:08b}' for byte in data)}")
 
+            elif choice == "14":
+                send_uart_command(ser, 0x11)  # Command to request PC
+                pc_data = receive_data_from_uart(ser, 4)  # Assuming PC is 4 bytes
+                print(f"PC Data: {pc_data}")
+                print(f"PC Data in bits: {' '.join(f'{byte:08b}' for byte in pc_data)}")
+                wait_for_ready(ser)
 
             elif choice == "0":
                 print("Exiting...")

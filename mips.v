@@ -277,7 +277,7 @@ module mips #(
         .BUS_SIZE(1)
     )
     mux_eq_neq(
-        .i_en(control_signals[EQorNE]),
+        .i_en(control_signals[EQorNE]), // 1 on EQ, 0 on NotEq
         .i_data({reg_equal_conditional, ~reg_equal_conditional}),
         .o_data(res_branch)
     );

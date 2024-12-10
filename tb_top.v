@@ -131,7 +131,7 @@ module tb_top;
         send_uart_command(8'h09); // Command to set continuous mode
         // Load a short test program
         send_uart_command(8'h07); // Command to start loading program
-        send_uart_command(8'd8); // Cantidad de instrucciones a cargar
+        send_uart_command(8'd10); // Cantidad de instrucciones a cargar
         // Send the instructions
         /*send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
         send_uart_data(32'b00111100000000100000000000000001, 32); // R2 = 1
@@ -175,15 +175,37 @@ module tb_top;
         send_uart_data(32'b00111100000010110000000000000001, 32); // NOP */
         
         //send_uart_data(32'b0, 32);
-        send_uart_data(32'b00100000000000010000000000001111, 32); // ADDI R1, R0, 15
+        /*send_uart_data(32'b00100000000000010000000000001111, 32); // ADDI R1, R0, 15
         send_uart_data(32'b10100000000000010000000000000000, 32); // SB R1, 0(0)
         send_uart_data(32'b00100000001000100000000000000111, 32); // ADDI R2, R1, 7
         send_uart_data(32'b10100000000000100000000000001000, 32); // SB R2, 8(0)
         send_uart_data(32'b10000000000000110000000000001000, 32); // LB R3, 8(0)
         send_uart_data(32'b00110000011001000000000000001011, 32); // ANDI R4, R3, 11
         send_uart_data(32'b00100000100000010000000100010000, 32); // ADDI R4, R4, 272
-        send_uart_data(32'b0, 32); // Primer set de prueba
-     
+        send_uart_data(32'b0, 32); // Primer set de prueba */
+
+        /*send_uart_data(32'b00100000000010100000000000001011, 32); // ADDI R10, R0, 15
+        send_uart_data(32'b00100000000101000000000000001111, 32); // ADDI R20, R0, 15
+        send_uart_data(32'b00010101010101000000000000000011, 32); // BEQ R10, R20, 3
+        send_uart_data(32'b11111111111111111111111111111110, 32); // ADDI R20, R0, 15
+        send_uart_data(32'b00100000000001000000000000101000, 32); // ADDI R4, R0, 40
+        send_uart_data(32'b00100000000001010000000000110010, 32); // ADDI R5, R0, 50
+        send_uart_data(32'b00100000000001100000000000110010, 32); // ADDI R6, R0, 50
+        send_uart_data(32'b00100000000000010000000000001010, 32); // ADDI R1, R0, 10  -> Salta aca
+        send_uart_data(32'b00100000000000100000000000010100, 32); // ADDI R2, R0, 20
+        send_uart_data(32'b00100000000000110000000000011110, 32); // ADDI R3, R0, 30 //rarisimo*/
+
+        send_uart_data(32'b00100000000000010000000000000110, 32); // ADDI R1, R0, 6
+        send_uart_data(32'b00000000001000000101000000001001, 32); // JALR R10, R1
+        send_uart_data(32'b0, 32);                                // NOP
+        send_uart_data(32'b00100000000001000000000000000111, 32); // ADDI R4, R0, 40
+        send_uart_data(32'b00100000000001010000000000000111, 32); // ADDI R5, R0, 40
+        send_uart_data(32'b00100000000001100000000000000111, 32); // ADDI R6, R0, 40
+        send_uart_data(32'b00100000000000010000000000001010, 32); // ADDI R1, R0, 10 -> Deberia saltar aca
+        send_uart_data(32'b00100000000000100000000000000101, 32); // ADDI R2, R0, 5
+        send_uart_data(32'b00100000000000110000000000000111, 32); // ADDI R3, R0, 7
+        send_uart_data(32'b00000001010000000000000000001000, 32); // JR R10
+
         //send_uart_command(8'h0E); 
 
         //send_uart_command(8'h07); // Command to start program 
@@ -191,10 +213,10 @@ module tb_top;
 
         send_uart_command(8'h0D); // Command to start program
                 
-        //send_uart_command(8'h0B);
-        //send_uart_command(8'h02);
-        //receive_data_from_uart(4);
-        //wait_for_ready();
+        send_uart_command(8'h0B);
+        send_uart_command(8'h02);
+        receive_data_from_uart(4);
+        wait_for_ready();
         
         //send_uart_command(8'h09); // Command to set step-by-step mode
 
@@ -206,62 +228,62 @@ module tb_top;
         //send_uart_command(8'h09); // Command to set step-by-step mode
         //wait_for_ready(); // Wait for 'R'
 
-        //send_uart_command(8'h02); // Command to request IF/ID latch
-        //receive_data_from_uart(8); // Receive 4 bytes of data
-//
-        //wait_for_ready(); // Wait for 'R'
-//
-        //send_uart_command(8'h03); // Command to request ID/EX latch
-        //receive_data_from_uart(17); // Receive 17 bytes of data
-        //wait_for_ready(); // Wait for 'R'
-        //
-        //send_uart_command(8'h04); // Command to request mem ex latch
-        //receive_data_from_uart(10); // Receive 17 bytes of data
-        //wait_for_ready;
-//
-        //send_uart_command(8'h05); // Command to request MEM/WB latch
-        //receive_data_from_uart(9); // Receive 9 bytes of data
-        //wait_for_ready(); // Wait for 'R'
-        //
-        //send_uart_command(8'h01);
-        //receive_data_from_uart(128); // Receive 9 bytes of data
-        //wait_for_ready(); // Wait for 'R'
-//
-        //send_uart_command(8'h0A); // Command to step program
-        //send_uart_command(8'h0A); // Command to step program
-        //send_uart_command(8'h0A); // Command to step program
-        //send_uart_command(8'h0A); // Command to step program
-        //send_uart_command(8'h0A); // Command to step program
-        //send_uart_command(8'h0A); // Command to step program
-        //send_uart_command(8'h0A); // Command to step program
-        //send_uart_command(8'h0A); // Command to step program
-        //send_uart_command(8'h0A); // Command to step program
-        //send_uart_command(8'h0A); // Command to step program
-//
-        //send_uart_command(8'h02); // Command to request IF/ID latch
-        //receive_data_from_uart(8); // Receive 4 bytes of data
-//
-        //wait_for_ready(); // Wait for 'R'
-//
-        //send_uart_command(8'h03); // Command to request ID/EX latch
-        //receive_data_from_uart(17); // Receive 17 bytes of data
-        //wait_for_ready(); // Wait for 'R'
-        //
-        //send_uart_command(8'h04); // Command to request mem ex latch
-        //receive_data_from_uart(10); // Receive 17 bytes of data
-        //wait_for_ready;
-//
-        //send_uart_command(8'h05); // Command to request MEM/WB latch
-        //receive_data_from_uart(9); // Receive 9 bytes of data
-        //wait_for_ready(); // Wait for 'R'
-        //
-        //send_uart_command(8'h01);
-        //receive_data_from_uart(128); // Receive 9 bytes of data
-        //wait_for_ready(); // Wait for 'R'
-        //
+        send_uart_command(8'h02); // Command to request IF/ID latch
+        receive_data_from_uart(8); // Receive 4 bytes of data
+
+        wait_for_ready(); // Wait for 'R'
+
+        send_uart_command(8'h03); // Command to request ID/EX latch
+        receive_data_from_uart(17); // Receive 17 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h04); // Command to request mem ex latch
+        receive_data_from_uart(10); // Receive 17 bytes of data
+        wait_for_ready;
+
+        send_uart_command(8'h05); // Command to request MEM/WB latch
+        receive_data_from_uart(9); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h01);
+        receive_data_from_uart(128); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+        send_uart_command(8'h0A); // Command to step program
+
+        send_uart_command(8'h02); // Command to request IF/ID latch
+        receive_data_from_uart(8); // Receive 4 bytes of data
+
+        wait_for_ready(); // Wait for 'R'
+
+        send_uart_command(8'h03); // Command to request ID/EX latch
+        receive_data_from_uart(17); // Receive 17 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h04); // Command to request mem ex latch
+        receive_data_from_uart(10); // Receive 17 bytes of data
+        wait_for_ready;
+
+        send_uart_command(8'h05); // Command to request MEM/WB latch
+        receive_data_from_uart(9); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        send_uart_command(8'h01);
+        receive_data_from_uart(128); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
         send_uart_command(8'h08); // Command to contiunous
         
-        #5000000;
+        #7000000;
 
 
         send_uart_command(8'h02); // Command to request IF/ID latch
@@ -281,13 +303,10 @@ module tb_top;
         receive_data_from_uart(9); // Receive 9 bytes of data
         wait_for_ready(); // Wait for 'R'
         
-        //send_uart_command(8'h01);
-        //receive_data_from_uart(128); // Receive 9 bytes of data
-        //wait_for_ready(); // Wait for 'R'
+        send_uart_command(8'h01);
+        receive_data_from_uart(128); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
 
-        //send_uart_command(8'h10);
-        //receive_data_from_uart(256);
-        //swait_for_ready();
 
 
         // Finish simulation

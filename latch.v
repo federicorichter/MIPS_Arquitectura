@@ -12,7 +12,7 @@ module latch#(
     
     reg [BUS_DATA - 1 : 0]  data_reg, data_next;     
     
-    always @(posedge clk or posedge rst)
+    /*always @(posedge clk or posedge rst)
     begin
         if (rst) begin   
             data_reg <= 0;
@@ -28,7 +28,18 @@ module latch#(
         if(i_enable)
             data_next   =   i_data;
     end
-    
+    */
+
+    always @(posedge clk or posedge rst)
+begin
+    if (rst) begin
+        data_reg <= 0;
+    end
+    else if (i_enable) begin
+        data_reg <= i_data;
+    end
+end
+
     assign o_data = data_reg;
 
 endmodule

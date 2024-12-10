@@ -42,7 +42,7 @@ module instruction_fetch #(
             o_instruction <= 32'b0;
         end else if (!i_stall && !i_inst_write_enable) begin
             o_pc <= i_pc;
-            o_instruction <= instruction_mem[i_pc];
+            o_instruction <= instruction_mem[o_pc];
         end
     end
 

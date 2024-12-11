@@ -289,7 +289,7 @@ module debugger #(
         next_write_addr = o_write_addr;
         next_send_debug_instructions_counter = send_debug_instructions_counter;
         uart_tx_start_reg = 0; // Reset TX start by default
-        stop_pc = instruction_count;
+        stop_pc = instruction_count + 7;
         case (state)
             IDLE: begin
                 uart_tx_start_reg = 0;
@@ -633,7 +633,12 @@ module debugger #(
             end
 
             WAIT_EXECUTE: begin
-                if (next_instruction_counter == instruction_count && instruction_count > 0) begin
+                if (o_write_addr < MEM_SIZE - 1) begin
+                    o_write_data = 0;
+                    o_inst_write_enable = 1;
+                    next_write_addr = o_write_addr + 1;
+                    next_state = WAIT_EXECUTE;
+                end else begin
                     o_write_data = 0;
                     reset_active = 1;           
                     next_prog_reset = 1;        
@@ -789,7 +794,7 @@ module debugger #(
             end
         end
     end
-    assign o_debug_clk = (o_mode) ? step_clk : i_clk;
+    assign o_debug_clk = (o_mode || i_pc >= stop_pc) ? step_clk : i_clk;
 
     assign uart_tx_start = uart_tx_start_reg;
     //assign uart_tx_data = uart_tx_data_reg;

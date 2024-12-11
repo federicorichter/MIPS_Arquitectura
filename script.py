@@ -122,7 +122,7 @@ def main():
         0x3C010003   # LUI R1, 3
     ]
 
-    instructionsoooo = [
+    instructions = [
         0x3C010008,  # LUI R1, 8
         0x3C030006,  # LUI R3, 6
         0x3C030006,  # LUI R3, 6
@@ -136,7 +136,7 @@ def main():
         0x3C030006   # LUI R3, 6
     ]
 
-    instructions = [
+    instructionsxd = [
         0b00100000000000010000000000000110,  # ADDI R1, R0, 6
         0b00000000001000000101000000001001,  # JALR R10, R1
         0b00000000000000000000000000000000,  # NOP

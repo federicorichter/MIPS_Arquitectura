@@ -77,7 +77,7 @@ module instruction_decode #(
         .BUS_SIZE(SIZE)
     )mux_de_dato_o_pc(
         i_jump_brch,
-        {i_pc_if,reg_a_value},
+        {(i_pc_if),reg_a_value},
         o_reg_A
     );
 
@@ -124,8 +124,8 @@ module instruction_decode #(
     assign o_dir_rd = i_instruction[15:11];
     assign o_dir_rs =   i_instruction[25:21]; 
     assign o_dir_rt =   i_instruction[20:16]; 
-    assign o_reg_A_branch = reg_a;
-    assign o_reg_B_branch = reg_b;
+    assign o_reg_A_branch = reg_a_value;
+    assign o_reg_B_branch = o_reg_B;
     assign o_jmp_direc = i_instruction[25:0];
 
 endmodule

@@ -117,7 +117,13 @@ module mips #(
             //pc_if <= 0;
         end
         else begin
-            if_to_id_reg <= if_to_id;
+            if(~hazard_output) begin
+                /*if(if_flush) begin
+                    if_to_id_reg <= { if_to_id[63:32],{32, 1'b0}};
+                end else begin
+                    */if_to_id_reg <= if_to_id;
+                //end
+            end
             id_to_ex_reg <= id_to_ex;
             ex_to_mem_reg <= ex_to_mem;
             mem_to_wb_reg <= mem_to_wb;
@@ -246,7 +252,7 @@ module mips #(
     control_unit(
         .i_func(if_to_id_reg[5:0]),
         .i_enable(~hazard_output),
-        .i_opcode(operand),
+        .i_opcode(if_to_id_reg[31:26]),
         .o_control(control_signals)
     );
 
@@ -266,7 +272,7 @@ module mips #(
     )
     mux_dir(
         .i_en(control_signals[JUMP_SRC]),
-        .i_data({{6'b0,o_jmp_direc} << 2 , reg_a_conditional}), 
+        .i_data({{8'b0,o_jmp_direc} , reg_a_conditional}), 
         .o_data(o_mux_dir)
     );
 
@@ -297,7 +303,7 @@ module mips #(
         .SIZE(SIZE)
     ) adder_pc_immediate(
         .i_stall(i_stall || i_inst_write_enable),
-        .i_a(if_to_id[63:32]),
+        .i_a(if_to_id_reg[63:32]),
         .i_b(immediate),
         .o_result(immediate_plus_pc)
     );
@@ -310,10 +316,10 @@ module mips #(
         .SIZE_OP(6)
     ) ID (
         .i_stall(i_stall || o_writing_instruction_mem),
-        .i_instruction(if_to_id[31:0]),
+        .i_instruction(if_to_id_reg[31:0]),
         .rst(i_rst || reset_debug),
         .clk(clk_to_use),
-        .i_pc_if(if_to_id[63:32]),
+        .i_pc_if(if_to_id_reg[63:32]),
         .i_jump_brch(control_signals[JUMP_B]),
         .i_write_enable(mem_to_wb[1]),
         .i_w_dir(address_write_reg),

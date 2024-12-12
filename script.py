@@ -131,6 +131,17 @@ def main():
         0x3C010003   # LUI R1, 3
     ]
 
+    instructions = [
+        0x3C010008,  # LUI R1, 8
+        0x3C030006,  # LUI R3, 6
+        0x3C030006,  # LUI R3, 6
+        0x3C030006,  # LUI R3, 6
+        0x01092009,  # JALR, R1, R9
+        0x3C030003,  # LUI R3, 3
+        0x3C03000F,  # LUI R3, 15
+        0x3C03000D,  # LUI R3, 13
+    ]
+
     program_2 = [
         0x200A000F, # ADDI R10, R0, 15 
         0x2014000F, # ADDI R20, R0, 15
@@ -167,16 +178,6 @@ def main():
         0x3E00008   # JR R31
     ]
 
-    instructions = [
-        0x3C010008,  # LUI R1, 8
-        0x3C030006,  # LUI R3, 6
-        0x3C030006,  # LUI R3, 6
-        0x3C030006,  # LUI R3, 6
-        0x01092009,  # JALR, R1, R9
-        0x3C030003,  # LUI R3, 3
-        0x3C03000F,  # LUI R3, 15
-        0x3C03000D,  # LUI R3, 13
-    ]
     
     instructions3 = [
         0x3C010001,  # LUI R1, 1

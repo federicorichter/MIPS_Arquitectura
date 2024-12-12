@@ -77,7 +77,7 @@ module instruction_decode #(
         .BUS_SIZE(SIZE)
     )mux_de_dato_o_pc(
         i_jump_brch,
-        {(i_pc_if),reg_a_value},
+        {(i_pc_if + 1),reg_a_value},
         o_reg_A
     );
 

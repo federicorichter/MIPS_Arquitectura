@@ -118,11 +118,11 @@ module mips #(
         end
         else begin
             if(~hazard_output) begin
-                /*if(if_flush) begin
+                if(if_flush || aux_flush) begin
                     if_to_id_reg <= { if_to_id[63:32],{32, 1'b0}};
                 end else begin
-                    */if_to_id_reg <= if_to_id;
-                //end
+                    if_to_id_reg <= if_to_id;
+                end
             end
             id_to_ex_reg <= id_to_ex;
             ex_to_mem_reg <= ex_to_mem;
@@ -216,12 +216,22 @@ module mips #(
         .o_writing_instruction_mem(o_writing_instruction_mem) // Señal de control para indicar escritura en memoria de instrucciones
     );
 
+    reg aux_flush;
+    always @(negedge clk_to_use) begin
+        if(if_flush && (if_to_id_reg[5:0] == 6'b001000) && (if_to_id_reg[31:26] == 6'b000000 )) begin
+            aux_flush <= 1;
+        end
+        else begin
+            aux_flush <= 0;
+        end
+    end
+
     latch #(
         .BUS_DATA(32)
     )
     IF_ID (
         .clk(clk_to_use),
-        .rst(i_rst || reset_debug || if_flush),
+        .rst(i_rst || reset_debug || if_flush || aux_flush),
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
         .i_data({
             //pc_plus,//PC + 4
@@ -261,7 +271,7 @@ module mips #(
         .BUS_SIZE(SIZE)
     )
     mux_jmp_brch(
-        .i_en(control_signals[JUMP_B]), //0 in branchs, 1 in Jumps
+        .i_en(control_signals[JUMP_B] || aux_flush), //0 in branchs, 1 in Jumps
         .i_data({o_mux_dir, o_mux_pc_immed}),
         .o_data(pc_if)
     );

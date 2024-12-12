@@ -131,7 +131,7 @@ module tb_top;
         send_uart_command(8'h09); // Command to set continuous mode
         // Load a short test program
         send_uart_command(8'h07); // Command to start loading program
-        send_uart_command(8'd9); // Cantidad de instrucciones a cargar
+        send_uart_command(8'd10); // Cantidad de instrucciones a cargar
         // Send the instructions
         /*send_uart_data(32'b00111100000000010000000000000011, 32); // R1 = 3
         send_uart_data(32'b00111100000000100000000000000001, 32); // R2 = 1
@@ -195,7 +195,7 @@ module tb_top;
         send_uart_data(32'b00100000000000100000000000010100, 32); // ADDI R2, R0, 20
         send_uart_data(32'b00100000000000110000000000011110, 32); // ADDI R3, R0, 30 //rarisimo pero funciona con regs */ 
 
-        /*send_uart_data(32'b00100000000000010000000000000110, 32); // ADDI R1, R0, 6
+        send_uart_data(32'b00100000000000010000000000000110, 32); // ADDI R1, R0, 6
         send_uart_data(32'b00000000001000000101000000001001, 32); // JALR R10, R1
         send_uart_data(32'b0, 32);                                // NOP
         send_uart_data(32'b00100000000001000000000000000111, 32); // ADDI R4, R0, 40
@@ -204,7 +204,7 @@ module tb_top;
         send_uart_data(32'b00100000000000010000000000001010, 32); // ADDI R1, R0, 10 -> Deberia saltar aca
         send_uart_data(32'b00100000000000100000000000000101, 32); // ADDI R2, R0, 5
         send_uart_data(32'b00100000000000110000000000000111, 32); // ADDI R3, R0, 7
-        send_uart_data(32'b00000001010000000000000000001000, 32); // JR R10 funciona(? usando reg */
+        send_uart_data(32'b00000001010000000000000000001000, 32); // JR R10 funciona(? usando reg 
 
         /*send_uart_data(32'b00001000000000000000000000000101, 32); // J 5
         send_uart_data(32'b0, 32);                                // NOP
@@ -215,7 +215,7 @@ module tb_top;
         send_uart_data(32'b00100000000000100000000000000101, 32); // ADDI R2, R0, 5
         send_uart_data(32'b00100000000000110000000000000111, 32); // ADDI R3, R0, 7 -> anda */
 
-        send_uart_data(32'b00001100000000000000000000000101, 32); // J 5
+        /*send_uart_data(32'b00001100000000000000000000000101, 32); // J 5
         send_uart_data(32'b0, 32);                                // NOP
         send_uart_data(32'b00100000000001000000000000101000, 32); // ADDI R4, R0, 40
         send_uart_data(32'b00100000000001010000000000101000, 32); // ADDI R5, R0, 40
@@ -223,7 +223,7 @@ module tb_top;
         send_uart_data(32'b00100000000000010000000000001010, 32); // ADDI R1, R0, 10 -> Deberia saltar aca
         send_uart_data(32'b00100000000000100000000000000101, 32); // ADDI R2, R0, 5
         send_uart_data(32'b00100000000000110000000000000111, 32); // ADDI R3, R0, 7 
-        send_uart_data(32'b00000011111000000000000000001000, 32);  // JR R31
+        send_uart_data(32'b00000011111000000000000000001000, 32);  // JR R31 */
 
         //send_uart_command(8'h0E); 
 

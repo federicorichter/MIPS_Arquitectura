@@ -216,7 +216,7 @@ module mips #(
         .o_writing_instruction_mem(o_writing_instruction_mem) // Señal de control para indicar escritura en memoria de instrucciones
     );
 
-    reg aux_flush;
+    reg aux_flush, aux_flush_pos;
     always @(negedge clk_to_use) begin
         if(if_flush && (if_to_id_reg[5:0] == 6'b001000) && (if_to_id_reg[31:26] == 6'b000000 )) begin
             aux_flush <= 1;
@@ -226,12 +226,22 @@ module mips #(
         end
     end
 
+    always @(posedge clk_to_use) begin
+        if(aux_flush) begin
+            aux_flush_pos <= 1;
+        end
+        else begin
+            aux_flush_pos <= 0;
+        end
+
+    end
+
     latch #(
         .BUS_DATA(32)
     )
     IF_ID (
         .clk(clk_to_use),
-        .rst(i_rst || reset_debug || if_flush || aux_flush),
+        .rst(i_rst || reset_debug || if_flush || aux_flush || aux_flush_pos),
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
         .i_data({
             //pc_plus,//PC + 4

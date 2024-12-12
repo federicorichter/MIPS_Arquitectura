@@ -108,27 +108,27 @@ module mips #(
     wire reset_debug;
 
 
-    always @(posedge clk_to_use or posedge i_rst or posedge reset_debug) begin
-        if (i_rst || reset_debug) begin
-            if_to_id_reg <= 0;
-            id_to_ex_reg <= 0;
-            ex_to_mem_reg <= 0;
-            mem_to_wb_reg <= 0;
-            //pc_if <= 0;
-        end
-        else begin
-            if(~hazard_output) begin
-                if(if_flush || aux_flush) begin
-                    if_to_id_reg <= { if_to_id[63:32],{32, 1'b0}};
-                end else begin
-                    if_to_id_reg <= if_to_id;
-                end
-            end
-            id_to_ex_reg <= id_to_ex;
-            ex_to_mem_reg <= ex_to_mem;
-            mem_to_wb_reg <= mem_to_wb;
-        end
-    end
+    //always @(posedge clk_to_use or posedge i_rst or posedge reset_debug) begin
+    //    if (i_rst || reset_debug) begin
+    //        if_to_id_reg <= 0;
+    //        id_to_ex_reg <= 0;
+    //        ex_to_mem_reg <= 0;
+    //        mem_to_wb_reg <= 0;
+    //        //pc_if <= 0;
+    //    end
+    //    else begin
+    //        if(~hazard_output) begin
+    //            if(if_flush || aux_flush) begin
+    //                if_to_id_reg <= { if_to_id[63:32],{32, 1'b0}};
+    //            end else begin
+    //                if_to_id_reg <= if_to_id;
+    //            end
+    //        end
+    //        id_to_ex_reg <= id_to_ex;
+    //        ex_to_mem_reg <= ex_to_mem;
+    //        mem_to_wb_reg <= mem_to_wb;
+    //    end
+    //end
 
     debugger #(
         .SIZE(SIZE),

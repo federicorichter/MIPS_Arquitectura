@@ -2,7 +2,7 @@ import serial
 import time
 import sys
 
-def setup_serial(port='/dev/ttyUSB1', baudrate=9600, timeout=1):
+def setup_serial(port='/dev/ttyUSB1', baudrate=(9542), timeout=1):
     try:
         ser = serial.Serial(port, baudrate, timeout=timeout, parity=serial.PARITY_NONE)
         print(f"Serial port {port} opened successfully.")
@@ -60,7 +60,7 @@ def wait_for_ready(ser):
         response = ser.read(1)
         if response == b'R':
             print("Ready signal received.")
-            break
+            return True
 
 def send_instructions(ser, instructions):
     send_uart_command(ser, 0x07)  # Start loading program
@@ -68,6 +68,10 @@ def send_instructions(ser, instructions):
     for instruction in instructions:
         send_uart_data(ser, instruction, 32)
         time.sleep(0.01)
+    for _ in range(65 - len(instructions)):
+        send_uart_data(ser, 0, 32)
+        time.sleep(0.01)
+
     wait_for_ready(ser)
 
 def request_latch(ser, latch_command, expected_size):
@@ -104,68 +108,54 @@ def menu():
 def main():
     ser = setup_serial()
 
-    program2 = [
-        0x3C010003,  # LUI R1, 3
-        0x3C020001,  # LUI R2, 1
-        0x3C030009,  # LUI R3, 9
-        0x3C040007,  # LUI R4, 7
-        0x3C050003,  # LUI R5, 3
-        0x3C060065,  # LUI R6, 101
-        0x3C070019,  # LUI R7, 25
-        0x00022023,  # SUB R3, R1, R2 -> 2
-        0x00642821,  # ADD R5, R3, R4 -> 9
-        0x00663021,  # ADD R7, R3, R6 -> 103
-        0x00652821,  # ADD R15, R3, R5
-        0x3C0F012C,  # LUI R15, 300
-        0x3C010003,  # LUI R1, 3
-        0x3C010003,  # LUI R1, 3
-        0x3C010003   # LUI R1, 3
+    instructions2 = [
+        0b00111100000000010000000000000011,  # LUI R1, 3
+        0b00111100000000100000000000000001,  # LUI R2, 1
+        0b00111100000000110000000000001001,  # LUI R3, 9
+        0b00111100000001000000000000000111,  # LUI R4, 7
+        0b00111100000001010000000000000011,  # LUI R5, 3
+        0b00111100000001100000000001100101,  # LUI R6, 101
+        0b00111100000001110000000000011001,  # LUI R7, 25
+        0b00000000001000100001100000100011,  # SUB R3, R1, R2 -> 2
+        0b00000000011001000010100000100001,  # ADD R5, R3, R4 -> 9
+        0b00000000011001100011100000100001,  # ADD R7, R3, R6 -> 103
+        0b00000000011001000010100000100001,  # ADD R15, R3, R5
+        0b00111100000011110000000010010100,  # LUI R15, 300
+        0b00111100000000010000000000000011,  # LUI R1, 3
+        0b00111100000000010000000000000011,  # LUI R1, 3
+        0b00111100000000010000000000000011,   # LUI R1, 3
     ]
 
     instructions = [
-        0x3C010008,  # LUI R1, 8
-        0x3C030006,  # LUI R3, 6
-        0x3C030006,  # LUI R3, 6
-        0x3C030006,  # LUI R3, 6
-        0x00024809,  # JALR R1, R9
-        0x3C030003,  # LUI R3, 3
-        0x3C03000F,  # LUI R3, 15
-        0x3C03000D,  # LUI R3, 13
-        0x3C030005,  # LUI R3, 5
-        0x3C030004,  # LUI R3, 4
-        0x3C030006   # LUI R3, 6
+        0b00111100000000010000000000001000,  # LUI R1, 8
+        0b00111100000000110000000000000110,  # LUI R3, 6
+        0b00111100000000110000000000000110,  # LUI R3, 6
+        0b00111100000000110000000000000110,  # LUI R3, 6
+        0b00000000001000000100100000001001,  # JALR R1, R9
+        0b00111100000000110000000000000011,  # LUI R3, 3
+        0b00111100000000110000000000001111,  # LUI R3, 15
+        0b00111100000000110000000000001101,  # LUI R3, 13
+        0b00111100000000110000000000000101,  # LUI R3, 5
+        0b00111100000000110000000000000100,  # LUI R3, 4
+        0b00111100000000110000000000000110   # LUI R3, 6
     ]
 
-    instructionsxd = [
-        0b00100000000000010000000000000110,  # ADDI R1, R0, 6
-        0b00000000001000000101000000001001,  # JALR R10, R1
-        0b00000000000000000000000000000000,  # NOP
-        0b00100000000001000000000000000111,  # ADDI R4, R0, 40
-        0b00100000000001010000000000000111,  # ADDI R5, R0, 40
-        0b00100000000001100000000000000111,  # ADDI R6, R0, 40
-        0b00100000000000010000000000001010,  # ADDI R1, R0, 10 -> Debería saltar acá
-        0b00100000000000100000000000000101,  # ADDI R2, R0, 5
-        0b00100000000000110000000000000111,  # ADDI R3, R0, 7
-        0b00000001010000000000000000001000   # JR R10
+    instructions2 = [ # FUNCIONA
+        0b00111100000000010000000000000001,  # LUI R1, 1
+        0b00111100000000110000000000000011,  # LUI R3, 3
+        0b00111100000010110000000000000001,  # NOP
+        0b00111100000010110000000000000001,  # NOP
+        0b10100100001000010000000000000001,  # SH, R1 -> MEM[1]
+        0b00111100000010110000000000000001,  # NOP
+        0b00111100000010110000000000000001,  # NOP
+        0b10000100001001010000000000000001,  # LH, R5 <- MEM[1]
+        0b00000000101000110011100000100001,  # R7 = R5 + R3 => Anda
+        0b00111100000010110000000000000011,  # NOP
+        0b00111100000010110000000000000001,  # NOP
+        0b00111100000010110000000000000001,   # NOP
     ]
 
-
-    instructionsr = [
-        0x3C010001,  # LUI R1, 1
-        0x3C030003,  # LUI R3, 3
-        0x3C2B0001,  # NOP
-        0x3C2B0001,  # NOP
-        0xA8410001,  # SH, R1 -> MEM[1]
-        0x3C2B0001,  # NOP
-        0x3C2B0001,  # NOP
-        0x88450001,  # LH, R5 <- MEM[1]
-        0x00A31821,  # R7 = R5 + R3 => Anda
-        0x3C2B0003,  # NOP
-        0x3C2B0001,  # NOP
-        0x3C2B0001   # NOP
-    ]
-
-    instructionsww = [
+    instructions1 = [ # FUNCIONA
         0b00100000000000010000000000001111,  # ADDI R1, R0, 15
         0b10100000000000010000000000000000,  # SB R1, 0(0)
         0b00100000001000100000000000000111,  # ADDI R2, R1, 7
@@ -174,18 +164,6 @@ def main():
         0b00110000011001000000000000001011,  # ANDI R4, R3, 11
         0b00100000100000010000000100010000,  # ADDI R4, R4, 272
         0b00000000000000000000000000000000   # Primer set de prueba
-    ]
-
-    instructionssss = [
-        #0x00000000,
-        0x2001000F,  # ADDI R1, R0, 15
-        0xA0010000,  # SB R1, 0(0)
-        0x20020007,  # ADDI R2, R1, 7
-        0xA0020008,  # SB R2, 8(0)
-        0x80030008,  # LB R3, 8(0)
-        0x3004000B,  # ANDI R4, R3, 11
-        0x20010410,  # ADDI R4, R4, 272
-        0x00000000   # Primer set de prueba
     ]
 
     latch_data = {

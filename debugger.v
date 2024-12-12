@@ -157,7 +157,7 @@ module debugger #(
     // UART modules
     wire tick;
     baudrate_generator #(
-        .COUNT(131)
+        .COUNT(65)
     ) baud_gen (
         .clk(i_clk),
         .reset(i_reset),
@@ -193,8 +193,8 @@ module debugger #(
 
     always @(*) begin
         o_write_addr_reg = o_write_addr;
-        o_write_data_reg = o_write_data;
         o_inst_write_enable_reg = o_inst_write_enable;
+        o_write_data_reg = o_write_data;
     end
 
     reg [1:0] rx_state;
@@ -289,7 +289,7 @@ module debugger #(
         next_write_addr = o_write_addr;
         next_send_debug_instructions_counter = send_debug_instructions_counter;
         uart_tx_start_reg = 0; // Reset TX start by default
-        stop_pc = instruction_count + 7;
+        stop_pc = instruction_count +8;
         case (state)
             IDLE: begin
                 uart_tx_start_reg = 0;
@@ -567,10 +567,10 @@ module debugger #(
                             next_instruction_counter = instruction_counter + 1;
                             
                             // Solo incrementar la dirección si no es la última instrucción
-                            if (next_instruction_counter < instruction_count) begin
+                            if (next_instruction_counter < MEM_SIZE) begin
                                 next_write_addr = o_write_addr + 1;
                                 next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
-                            end else if (next_instruction_counter == instruction_count) begin
+                            end else if (next_instruction_counter == MEM_SIZE) begin
                                 // Si es la última instrucción, no incrementar la dirección y pasar a WAIT_EXECUTE
                                 next_write_addr = o_write_addr + 1; // Mantener la dirección actual
                                 next_state = WAIT_EXECUTE;
@@ -633,18 +633,11 @@ module debugger #(
             end
 
             WAIT_EXECUTE: begin
-                if (o_write_addr < MEM_SIZE - 1) begin
-                    o_write_data = 0;
-                    o_inst_write_enable = 1;
-                    next_write_addr = o_write_addr + 1;
-                    next_state = WAIT_EXECUTE;
-                end else begin
-                    o_write_data = 0;
-                    reset_active = 1;           
-                    next_prog_reset = 1;        
-                    next_reset_counter = 0;     
-                    next_state = PROGRAM_RESET;
-                end
+                o_write_data = 0;
+                reset_active = 1;           
+                next_prog_reset = 1;        
+                next_reset_counter = 0;     
+                next_state = PROGRAM_RESET;
             end
 
             PROGRAM_RESET: begin

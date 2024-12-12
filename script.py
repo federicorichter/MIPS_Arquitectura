@@ -113,22 +113,61 @@ def menu():
 def main():
     ser = setup_serial()
 
-    # Instructions no comentadas\
-    instructions = [
-        0x3C010003,  # R1 = 3
-        0x3C020001,  # R2 = 1
-        0x3C030009,  # R3 = 9
-        0x3C040007,  # R4 = 7
-        0x3C050003,  # R5 = 3
-        0x3C060065,  # R6 = 101
-        0x3C070019,  # R7 = 25
-        0x00421823,  # R3 = R1 - R2 -> 2
-        0x00642821,  # R5 = R3 + R4 -> 9
-        0x00663821,  # R7 = R3 + R6 -> 103
+    program2 = [
+        0x3C010003,  # LUI R1, 3
+        0x3C020001,  # LUI R2, 1
+        0x3C030009,  # LUI R3, 9
+        0x3C040007,  # LUI R4, 7
+        0x3C050003,  # LUI R5, 3
+        0x3C060065,  # LUI R6, 101
+        0x3C070019,  # LUI R7, 25
+        0x00022023,  # SUB R3, R1, R2 -> 2
+        0x00642821,  # ADD R5, R3, R4 -> 9
+        0x00663021,  # ADD R7, R3, R6 -> 103
+        0x00652821,  # ADD R15, R3, R5
+        0x3C0F012C,  # LUI R15, 300
+        0x3C010003,  # LUI R1, 3
+        0x3C010003,  # LUI R1, 3
+        0x3C010003   # LUI R1, 3
     ]
-    
-    # Instructions comentadas (bloques separados)
-    instructions2 = [
+
+    program_2 = [
+        0x200A000F, # ADDI R10, R0, 15 
+        0x2014000F, # ADDI R20, R0, 15
+        0x11540003, # BEQ R10, R20, 3
+        0x0,        # NOP
+        0x20040028, # ADDI R4, R0, 40
+        0x20050032, # ADDI R5, R0, 50
+        0x20060032, # ADDI R6, R0, 50
+        0x2001000A, # ADDI R1, R0, 10
+        0x20020012, # ADDI R2, R0, 18
+        0x2003001E  # ADDI R3, R0, 30
+    ]
+
+    program_j = [
+        0x8000005, # J 5
+        0x0,        # NOP
+        0x20040028, # ADDI R4, R0, 40
+        0x20050032, # ADDI R5, R0, 50
+        0x20060032, # ADDI R6, R0, 50
+        0x2001000A, # ADDI R1, R0, 10
+        0x20020012, # ADDI R2, R0, 18
+        0x2003001E  # ADDI R3, R0, 30
+    ]
+
+    program_jal = [
+        0xC000005, # JAL 5 -> Revisar R31
+        0x0,        # NOP
+        0x20040028, # ADDI R4, R0, 40
+        0x20050032, # ADDI R5, R0, 50
+        0x20060032, # ADDI R6, R0, 50
+        0x2001000A, # ADDI R1, R0, 10
+        0x20020012, # ADDI R2, R0, 18
+        0x2003001E  # ADDI R3, R0, 30
+        0x3E00008   # JR R31
+    ]
+
+    instructions = [
         0x3C010008,  # LUI R1, 8
         0x3C030006,  # LUI R3, 6
         0x3C030006,  # LUI R3, 6
@@ -170,7 +209,7 @@ def main():
         0b00000000001000000101000000001001,  # JALR R10, R1
         0b00000000000000000000000000000000,  # NOP
         0b00100000000001000000000000000111,  # ADDI R4, R0, 40
-        0b00100000000001010000000000000111,  # ADDI R5, R0, 40
+        0b00100000000001010000000000000111,  # ADDI R5, R0, 40 -> Despues salta aca
         0b00100000000001100000000000000111,  # ADDI R6, R0, 40
         0b00100000000000010000000000001010,  # ADDI R1, R0, 10 -> Debería saltar acá
         0b00100000000000100000000000000101,  # ADDI R2, R0, 5

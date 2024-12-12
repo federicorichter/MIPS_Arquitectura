@@ -113,7 +113,7 @@ def menu():
 def main():
     ser = setup_serial()
 
-    program2 = [
+    instructions1 = [
         0x3C010003,  # LUI R1, 3
         0x3C020001,  # LUI R2, 1
         0x3C030009,  # LUI R3, 9
@@ -131,7 +131,7 @@ def main():
         0x3C010003   # LUI R1, 3
     ]
 
-    instructions = [
+    instructions1 = [
         0x3C010008,  # LUI R1, 8
         0x3C030006,  # LUI R3, 6
         0x3C030006,  # LUI R3, 6
@@ -174,12 +174,12 @@ def main():
         0x20060032, # ADDI R6, R0, 50
         0x2001000A, # ADDI R1, R0, 10
         0x20020012, # ADDI R2, R0, 18
-        0x2003001E  # ADDI R3, R0, 30
+        0x2003001E,  # ADDI R3, R0, 30
         0x3E00008   # JR R31
     ]
 
     
-    instructions3 = [
+    instructions = [
         0x3C010001,  # LUI R1, 1
         0x3C030003,  # LUI R3, 3
         0x3C2B0001,  # NOP

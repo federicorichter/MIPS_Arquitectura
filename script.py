@@ -242,6 +242,9 @@ def main():
 
             elif choice == "4":
                 send_uart_command(ser, 0x0D)  # Start Program Execution
+                send_uart_command(ser, 0x0A)
+                send_uart_command(ser, 0x0A)
+
 
             elif choice in latch_data:
                 latch_name = {"5": "IF/ID", "6": "ID/EX", "7": "EX/MEM", "8": "MEM/WB", "9": "REGISTERS"}[choice]

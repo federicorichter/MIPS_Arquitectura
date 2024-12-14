@@ -22,11 +22,7 @@ module mips #(
     output wire [4:0] instruction_counter_out,
     output wire [2:0] byte_counter_out,
     output wire uart_rx_done_reg_out,
-    //output reg [4:0] pc_out,
-
     input wire i_clk
-    //output wire rx_done_tick, // Añadir señal de tick de recepción
-    //output wire tx_done_tick  // Añadir señal de tick de transmisión
 );  
 
     //Control Bits
@@ -106,6 +102,8 @@ module mips #(
     wire if_flush;
     wire [SIZE-1:0] pc_plus_4;
     wire reset_debug;
+
+    reg aux_flush, aux_flush_pos;
 
 
     always @(posedge clk_to_use or posedge i_rst or posedge reset_debug) begin
@@ -216,7 +214,6 @@ module mips #(
         .o_writing_instruction_mem(o_writing_instruction_mem) // Señal de control para indicar escritura en memoria de instrucciones
     );
 
-    reg aux_flush, aux_flush_pos;
     always @(negedge clk_to_use) begin
          if(if_flush && ((if_to_id_reg[5:0] == 6'b001000) || (if_to_id_reg[5:0] == 6'b001001) )&& (if_to_id_reg[31:26] == 6'b000000 )) begin
             aux_flush <= 1;
@@ -244,7 +241,6 @@ module mips #(
         .rst(i_rst || reset_debug || if_flush || aux_flush || aux_flush_pos),
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
         .i_data({
-            //pc_plus,//PC + 4
             instruction //PC
          
         }),
@@ -260,7 +256,6 @@ module mips #(
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
         .i_data({
             pc_plus_4//PC + 4
-            //instruction //PC
          
         }),
         .o_data(if_to_id[63:32])

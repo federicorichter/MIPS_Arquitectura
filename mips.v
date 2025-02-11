@@ -236,16 +236,21 @@ module mips #(
 
     end
 
+    wire [SIZE-1:0] instruction_input;
+
+    assign instruction_input = if_flush == 1 ? 32'b0 : instruction;
+
+
     latch #(
         .BUS_DATA(32)
     )
     IF_ID (
         .clk(clk_to_use),
-        .rst(i_rst || reset_debug || if_flush || aux_flush || aux_flush_pos),
+        .rst(i_rst || reset_debug ), //|| aux_flush || aux_flush_pos),
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
         .i_data({
             //pc_plus,//PC + 4
-            instruction //PC
+            instruction_input //PC
          
         }),
         .o_data(if_to_id[31:0])
@@ -270,9 +275,9 @@ module mips #(
         .CONTROL_SIZE(CONTROL_SIZE)
     )
     control_unit(
-        .i_func(if_to_id_reg[5:0]),
+        .i_func(if_to_id[5:0]),
         .i_enable(~hazard_output),
-        .i_opcode(if_to_id_reg[31:26]),
+        .i_opcode(if_to_id[31:26]),
         .o_control(control_signals)
     );
 
@@ -281,7 +286,7 @@ module mips #(
         .BUS_SIZE(SIZE)
     )
     mux_jmp_brch(
-        .i_en(control_signals[JUMP_B] || aux_flush), //0 in branchs, 1 in Jumps
+        .i_en(control_signals[JUMP_B]), //0 in branchs, 1 in Jumps
         .i_data({o_mux_dir, o_mux_pc_immed}),
         .o_data(pc_if)
     );
@@ -323,11 +328,10 @@ module mips #(
         .SIZE(SIZE)
     ) adder_pc_immediate(
         .i_stall(i_stall || i_inst_write_enable),
-        .i_a(if_to_id_reg[63:32]),
+        .i_a(if_to_id[63:32]),
         .i_b(immediate),
         .o_result(immediate_plus_pc)
     );
-
 
     instruction_decode #(
         .SIZE(32),
@@ -336,10 +340,10 @@ module mips #(
         .SIZE_OP(6)
     ) ID (
         .i_stall(i_stall || o_writing_instruction_mem),
-        .i_instruction(if_to_id_reg[31:0]),
+        .i_instruction(if_to_id[31:0]),
         .rst(i_rst || reset_debug),
         .clk(clk_to_use),
-        .i_pc_if(if_to_id_reg[63:32]),
+        .i_pc_if(if_to_id[63:32]),
         .i_jump_brch(control_signals[JUMP_B]),
         .i_write_enable(mem_to_wb[1]),
         .i_w_dir(address_write_reg),

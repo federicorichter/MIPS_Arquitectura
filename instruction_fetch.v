@@ -36,13 +36,13 @@ module instruction_fetch #(
     end
 
     // Lectura de memoria de instrucciones y actualización de PC
-    always @(negedge i_clk or posedge i_rst_debug) begin
+    always @(posedge i_clk or posedge i_rst_debug) begin
         if (i_rst_debug) begin
             o_pc <= 32'b0;
             o_instruction <= 32'b0;
         end else if (!i_stall && !i_inst_write_enable) begin
             o_pc <= i_pc;
-            o_instruction <= instruction_mem[o_pc];
+            o_instruction <= instruction_mem[i_pc];
         end
     end
 

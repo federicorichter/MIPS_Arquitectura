@@ -76,7 +76,7 @@ module tb_top;
     reg [31:0]regs[31:0];
     reg done = 0;
     baudrate_generator #(
-        .COUNT(131)
+        .COUNT(325)
     ) baud_gen (
         .clk(i_clk),
         .reset(i_rst),
@@ -195,18 +195,19 @@ module tb_top;
         send_uart_data(32'b00100000000000100000000000010100, 32); // ADDI R2, R0, 20
         send_uart_data(32'b00100000000000110000000000011110, 32); // ADDI R3, R0, 30 //rarisimo pero funciona con regs */ 
 
+       /* send_uart_data(32'b0, 32);                               // NOP
         send_uart_data(32'b00100000000000010000000000000110, 32); // ADDI R1, R0, 6
         send_uart_data(32'b00000000001000000101000000001001, 32); // JALR R10, R1
-        send_uart_data(32'b0, 32);                                // NOP
+        send_uart_data(32'b0, 32);                                // NOP, 1
         send_uart_data(32'b00100000000001000000000000000111, 32); // ADDI R4, R0, 40
         send_uart_data(32'b00100000000001010000000000000111, 32); // ADDI R5, R0, 40
-        send_uart_data(32'b00100000000001100000000000000111, 32); // ADDI R6, R0, 40
-        send_uart_data(32'b00100000000000010000000000001010, 32); // ADDI R1, R0, 10 -> Deberia saltar aca
+        send_uart_data(32'b00100000000001100000000000000111, 32); // ADDI R6, R0, 40 -> Deberia saltar aca
+        send_uart_data(32'b00100000000001110000000000001010, 32); // ADDI R7, R0, 10 
         send_uart_data(32'b00100000000000100000000000000101, 32); // ADDI R2, R0, 5
         send_uart_data(32'b00100000000000110000000000000111, 32); // ADDI R3, R0, 7
-        send_uart_data(32'b00000001010000000000000000001000, 32); // JR R10 funciona(? usando reg 
+        send_uart_data(32'b00000001010000000000000000001000, 32); // JR R10 funciona(? usando reg */
 
-        /*send_uart_data(32'b00001000000000000000000000000101, 32); // J 5
+       /* send_uart_data(32'b00001000000000000000000000000101, 32); // J 5
         send_uart_data(32'b0, 32);                                // NOP
         send_uart_data(32'b00100000000001000000000000101000, 32); // ADDI R4, R0, 40
         send_uart_data(32'b00100000000001010000000000101000, 32); // ADDI R5, R0, 40
@@ -215,15 +216,16 @@ module tb_top;
         send_uart_data(32'b00100000000000100000000000000101, 32); // ADDI R2, R0, 5
         send_uart_data(32'b00100000000000110000000000000111, 32); // ADDI R3, R0, 7 -> anda */
 
-        /*send_uart_data(32'b00001100000000000000000000000101, 32); // JAL 5
+        send_uart_data(32'b0, 32);                                // NOP
+        send_uart_data(32'b00001100000000000000000000000101, 32); // JAL 5
         send_uart_data(32'b0, 32);                                // NOP
         send_uart_data(32'b00100000000001000000000000101000, 32); // ADDI R4, R0, 40
         send_uart_data(32'b00100000000001010000000000101000, 32); // ADDI R5, R0, 40
-        send_uart_data(32'b00100000000001100000000000101000, 32); // ADDI R6, R0, 40 
-        send_uart_data(32'b00100000000000010000000000001010, 32); // ADDI R1, R0, 10 -> Deberia saltar aca
+        send_uart_data(32'b00100000000001100000000000101000, 32); // ADDI R6, R0, 40 -> Deberia saltar aca
+        send_uart_data(32'b00100000000000010000000000001010, 32); // ADDI R1, R0, 10 
         send_uart_data(32'b00100000000000100000000000000101, 32); // ADDI R2, R0, 5
         send_uart_data(32'b00100000000000110000000000000111, 32); // ADDI R3, R0, 7 
-        send_uart_data(32'b00000011111000000000000000001000, 32);  // JR R31 */
+        send_uart_data(32'b00000011111000000000000000001000, 32);  // JR R31 
 
         //send_uart_command(8'h0E); 
 

@@ -157,7 +157,7 @@ module debugger #(
     // UART modules
     wire tick;
     baudrate_generator #(
-        .COUNT(65)
+        .COUNT(325)
     ) baud_gen (
         .clk(i_clk),
         .reset(i_reset),
@@ -289,7 +289,7 @@ module debugger #(
         next_write_addr = o_write_addr;
         next_send_debug_instructions_counter = send_debug_instructions_counter;
         uart_tx_start_reg = 0; // Reset TX start by default
-        stop_pc = instruction_count - 7;
+        stop_pc = instruction_count ;
         case (state)
             IDLE: begin
                 uart_tx_start_reg = 0;
@@ -789,7 +789,7 @@ module debugger #(
             end
         end
     end
-    assign o_debug_clk = (o_mode || i_pc >= stop_pc) ? step_clk : i_clk;
+    assign o_debug_clk = (o_mode || i_pc >= stop_pc + 5) ? step_clk : i_clk;
 
     assign uart_tx_start = uart_tx_start_reg;
     //assign uart_tx_data = uart_tx_data_reg;

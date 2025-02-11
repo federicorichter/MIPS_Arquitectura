@@ -109,10 +109,10 @@ class MipsTranslator:
     def translate_instruction(self, instruction):
         parts = instruction.lower().replace(',', ' ').split()
         op = parts[0]
-
+    
         if op not in self.instructions:
             raise ValueError(f"Unknown instruction: {op}")
-
+    
         inst_type = self.instructions[op]['type']
         opcode = self.instructions[op]['opcode']
 
@@ -131,7 +131,11 @@ class MipsTranslator:
                 return self.encode_r_type(opcode, rs, rt, rd, 0, self.instructions[op]['funct'])
 
         elif inst_type == self.I_TYPE:
-            if op in ['beq', 'bne']:
+            if op == 'lui':  # Special handling for LUI
+                rt = self.parse_register(parts[1])
+                imm = self.parse_immediate(parts[2])
+                return self.encode_i_type(opcode, 0, rt, imm)
+            elif op in ['beq', 'bne']:
                 rs = self.parse_register(parts[1])
                 rt = self.parse_register(parts[2])
                 imm = self.parse_immediate(parts[3])

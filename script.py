@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
 import serial
 import time
 import sys
+import argparse
 
 def setup_serial(port='/dev/ttyUSB1', baudrate=9543, timeout=1):
     try:
@@ -14,28 +16,20 @@ def setup_serial(port='/dev/ttyUSB1', baudrate=9543, timeout=1):
 def load_instructions_from_coe(filename):
     try:
         with open(filename, 'r') as file:
-            lines = file.readlines()
-
-        instructions = []
-        for line in lines:
-            line = line.strip()
-            if line.startswith("memory_initialization_vector="):
-                vector_line = line.split('=')[1].strip()
-                vector_line = vector_line.rstrip(';')  # Remove trailing semicolon
-                instructions.extend(vector_line.split(','))  # Split instructions
-            elif not line.startswith("memory_initialization_radix") and line:
-                instructions.extend(line.rstrip(';').split(','))  # Handle subsequent lines
-        
-        # Convert hex strings to integers
-        return [int(instr.strip(), 16) for instr in instructions if instr.strip()]
-    
+            instructions = []
+            for line in file:
+                # Remove whitespace and commas
+                line = line.strip().rstrip(',')
+                if line:
+                    # Convert binary string to integer
+                    instructions.append(int(line, 2))
+        return instructions
     except FileNotFoundError:
         print(f"Error: File '{filename}' not found.")
         sys.exit(1)
     except Exception as e:
         print(f"Error reading file '{filename}': {e}")
         sys.exit(1)
-
 
 def send_uart_command(ser, command):
     ser.write(command.to_bytes(1, byteorder='big'))
@@ -64,11 +58,11 @@ def wait_for_ready(ser):
 
 def send_instructions(ser, instructions):
     send_uart_command(ser, 0x07)  # Start loading program
-    send_uart_command(ser, len(instructions) + 15)  # Number of instructions
+    send_uart_command(ser, len(instructions) + 15)  # Number of instructions + padding
     for instruction in instructions:
         send_uart_data(ser, instruction, 32)
         time.sleep(0.01)
-    for _ in range(15):
+    for _ in range(15):  # Add 15 padding instructions
         send_uart_data(ser, 0, 32)
         time.sleep(0.01)
     wait_for_ready(ser)
@@ -105,126 +99,28 @@ def menu():
     print("11. Print memory data location")
     print("12. Load instructions file")
     print("13. Print instruction memory")
-    print("14. Request PC")  # Nueva opción para solicitar el PC
+    print("14. Request PC")
     print("0. Exit")
-    choice = input("Enter your choice: ")
-    return choice
+    return input("Enter your choice: ")
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='MIPS Instructions Loader via UART')
+    parser.add_argument('coe_file', help='Path to the .coe file containing binary instructions')
+    args = parser.parse_args()
+
+    # Setup serial connection
     ser = setup_serial()
 
-    instructions1 = [
-        0x3C010003,  # LUI R1, 3
-        0x3C020001,  # LUI R2, 1
-        0x3C030009,  # LUI R3, 9
-        0x3C040007,  # LUI R4, 7
-        0x3C050003,  # LUI R5, 3
-        0x3C060065,  # LUI R6, 101
-        0x3C070019,  # LUI R7, 25
-        0x00022023,  # SUB R3, R1, R2 -> 2
-        0x00642821,  # ADD R5, R3, R4 -> 9
-        0x00663021,  # ADD R7, R3, R6 -> 103
-        0x00652821,  # ADD R15, R3, R5
-        0x3C0F012C,  # LUI R15, 300
-        0x3C010003,  # LUI R1, 3
-        0x3C010003,  # LUI R1, 3
-        0x3C010003   # LUI R1, 3
-    ]
-
-    instructions1 = [
-        0x3C010008,  # LUI R1, 8
-        0x3C030006,  # LUI R3, 6
-        0x3C030006,  # LUI R3, 6
-        0x3C030006,  # LUI R3, 6
-        0x01092009,  # JALR, R1, R9
-        0x3C030003,  # LUI R3, 3
-        0x3C03000F,  # LUI R3, 15
-        0x3C03000D,  # LUI R3, 13
-    ]
-
-    program_2 = [
-        0x200A000F, # ADDI R10, R0, 15 
-        0x2014000F, # ADDI R20, R0, 15
-        0x11540003, # BEQ R10, R20, 3
-        0x0,        # NOP
-        0x20040028, # ADDI R4, R0, 40
-        0x20050032, # ADDI R5, R0, 50
-        0x20060032, # ADDI R6, R0, 50
-        0x2001000A, # ADDI R1, R0, 10
-        0x20020012, # ADDI R2, R0, 18
-        0x2003001E  # ADDI R3, R0, 30
-    ]
-
-    program_j = [
-        0x8000005, # J 5
-        0x0,        # NOP
-        0x20040028, # ADDI R4, R0, 40
-        0x20050032, # ADDI R5, R0, 50
-        0x20060032, # ADDI R6, R0, 50
-        0x2001000A, # ADDI R1, R0, 10
-        0x20020012, # ADDI R2, R0, 18
-        0x2003001E  # ADDI R3, R0, 30
-    ]
-
-    program_jal = [
-        0xC000005, # JAL 5 -> Revisar R31
-        0x0,        # NOP
-        0x20040028, # ADDI R4, R0, 40
-        0x20050032, # ADDI R5, R0, 50
-        0x20060032, # ADDI R6, R0, 50
-        0x2001000A, # ADDI R1, R0, 10
-        0x20020012, # ADDI R2, R0, 18
-        0x2003001E,  # ADDI R3, R0, 30
-        0x3E00008   # JR R31
-    ]
-
-    
-    instructions = [
-        0x3C010001,  # LUI R1, 1
-        0x3C030003,  # LUI R3, 3
-        0x3C2B0001,  # NOP
-        0xA4210001,  # SH, R1 -> MEM[1]
-        0x84250001,  # LH, R5 <- MEM[1]
-        0x02B31C21,  # R7 = R5 + R3
-    ]
-    
-    instructions4 = [
-        0x200F000F,  # ADDI R1, R0, 15
-        0xA0000000,  # SB R1, 0(0)
-        0x20420007,  # ADDI R2, R1, 7
-        0xA0020008,  # SB R2, 8(0)
-        0x80030008,  # LB R3, 8(0)
-        0x3064000B,  # ANDI R4, R3, 11
-    ]
-    
-    instructions5 = [
-        0x200A000F,  # ADDI R10, R0, 15
-        0x200A000F,  # ADDI R20, R0, 15
-        0x11500003,  # BNEQ R10, R20, 3
-        0x20040028,  # ADDI R4, R0, 40
-        0x20050032,  # ADD R5, R0, 50
-    ]
-
-    instructions6 = [
-        0b00100000000000010000000000000110,  # ADDI R1, R0, 6
-        0b00000000001000000101000000001001,  # JALR R10, R1
-        0b00000000000000000000000000000000,  # NOP
-        0b00100000000001000000000000000111,  # ADDI R4, R0, 40
-        0b00100000000001010000000000000111,  # ADDI R5, R0, 40 -> Despues salta aca
-        0b00100000000001100000000000000111,  # ADDI R6, R0, 40
-        0b00100000000000010000000000001010,  # ADDI R1, R0, 10 -> Debería saltar acá
-        0b00100000000000100000000000000101,  # ADDI R2, R0, 5
-        0b00100000000000110000000000000111,  # ADDI R3, R0, 7
-        0b00000001010000000000000000001000   # JR R10
-    ]
-
+    # Load initial instructions
+    instructions = load_instructions_from_coe(args.coe_file)
 
     latch_data = {
-        "5": (0x02, 4),  # IF/ID
-        "6": (0x03, 17), # ID/EX
-        "7": (0x04, 10), # EX/MEM
-        "8": (0x05, 9),  # MEM/WB
-        "9": (0x01, 128) # REGISTERS
+        "5": (0x02, 4),   # IF/ID
+        "6": (0x03, 17),  # ID/EX
+        "7": (0x04, 10),  # EX/MEM
+        "8": (0x05, 9),   # MEM/WB
+        "9": (0x01, 128)  # REGISTERS
     }
 
     try:
@@ -235,7 +131,7 @@ def main():
                 send_uart_command(ser, 0x08)  # Set Continuous Mode
 
             elif choice == "2":
-                send_uart_command(ser, 0x09)
+                send_uart_command(ser, 0x09)  # Set Step Mode
 
             elif choice == "3":
                 send_instructions(ser, instructions)
@@ -253,10 +149,10 @@ def main():
                 wait_for_ready(ser)
            
             elif choice == "10":
-                send_uart_command(ser, 0x0A) # Step debugger
+                send_uart_command(ser, 0x0A)  # Step debugger
 
             elif choice == "11":
-                send_uart_command(ser, 0x0B) # Print data memory
+                send_uart_command(ser, 0x0B)  # Print data memory
                 position = input("Enter memory position (0-1023): ")
                 if position.isdigit() and 0 <= int(position) <= 1023:
                     send_uart_command(ser, int(position))
@@ -265,11 +161,9 @@ def main():
                 else:
                     print("Invalid position. Please enter a number between 0 and 1023.")
 
-                
-            elif choice == "12": 
-                print("Loading instructions frome .coe file")
-                coe_file = "program.coe"
-                instructions = load_instructions_from_coe(coe_file)
+            elif choice == "12":
+                print(f"Reloading instructions from {args.coe_file}")
+                instructions = load_instructions_from_coe(args.coe_file)
 
             elif choice == "13":
                 print("Requesting instruction memory...")
@@ -278,8 +172,8 @@ def main():
                 print(f"Instruction Memory Data in bits: {' '.join(f'{byte:08b}' for byte in data)}")
 
             elif choice == "14":
-                send_uart_command(ser, 0x11)  # Command to request PC
-                pc_data = receive_data_from_uart(ser, 4)  # Assuming PC is 4 bytes
+                send_uart_command(ser, 0x11)  # Request PC
+                pc_data = receive_data_from_uart(ser, 4)
                 print(f"PC Data: {pc_data}")
                 print(f"PC Data in bits: {' '.join(f'{byte:08b}' for byte in pc_data)}")
                 wait_for_ready(ser)
@@ -293,7 +187,6 @@ def main():
 
     except Exception as e:
         print(f"Error: {e}")
-
     finally:
         ser.close()
         print("Serial port closed.")

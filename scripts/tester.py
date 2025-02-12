@@ -169,6 +169,9 @@ def main():
                     send_uart_command(ser, int(position))
                     receive_data_from_uart(ser, 4)
                     wait_for_ready(ser)
+                    send_uart_command(ser, 0x06)  # Request data memory
+                    data = receive_data_from_uart(ser, 4)
+                    print(f"Data Memory at position {position}: {int.from_bytes(data, byteorder='little')}")
                 else:
                     print("Invalid position. Please enter a number between 0 and 1023.")
 

@@ -165,16 +165,16 @@ module tb_top;
 
         send_uart_data(32'b00111100000000010000000000000001, 32); // LUI R1, 1
         send_uart_data(32'b00111100000000110000000000000011, 32); // LUI R3, 3
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP 
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
+        send_uart_data(32'b0, 32); // NOP 
+        send_uart_data(32'b0, 32); // NOP
         send_uart_data(32'b10100100001000010000000000000001, 32); // SH, R1 -> MEM[1 + 1]
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
+        send_uart_data(32'b0, 32); // NOP
+        send_uart_data(32'b0, 32); // NOP
         send_uart_data(32'b10000100001001010000000000000001, 32); // LH, R5 <- MEM[1 + 1]
         send_uart_data(32'b00000000101000110011100000100001, 32); // R7 = R5 + R3 => Anda
-        send_uart_data(32'b00111100000010110000000000000011, 32); // NOP
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP
-        send_uart_data(32'b00111100000010110000000000000001, 32); // NOP 
+        send_uart_data(32'b0, 32); // NOP
+        send_uart_data(32'b0, 32); // NOP
+        send_uart_data(32'b0, 32); // NOP 
         
         //send_uart_data(32'b0, 32);
         /*send_uart_data(32'b00100000000000010000000000001111, 32); // ADDI R1, R0, 15
@@ -236,6 +236,12 @@ module tb_top;
 
         send_uart_command(8'h0D); // Command to start program
         send_uart_command(8'h0A); // Command to set continuous mode
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
         send_uart_command(8'h0A);
         send_uart_command(8'h0A);
         send_uart_command(8'h0A);

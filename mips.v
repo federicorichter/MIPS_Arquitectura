@@ -206,7 +206,7 @@ module mips #(
     IF_ID (
         .clk(i_clk),
         .rst(i_rst || reset_debug ), //|| aux_flush || aux_flush_pos),
-        .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
+        .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem && ~o_mode),
         .i_data({
             //pc_plus,//PC + 4
             instruction_input //PC
@@ -221,7 +221,7 @@ module mips #(
     IF_ID2 (
         .clk(i_clk),
         .rst(i_rst || reset_debug),
-        .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
+        .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem && ~o_mode),
         .i_data({
             pc_plus_4//PC + 4
             //instruction //PC
@@ -339,7 +339,7 @@ module mips #(
     ) ID_EX (
         .clk(i_clk),
         .rst(i_rst || reset_debug),
-        .i_enable(~i_stall && ~o_writing_instruction_mem),
+        .i_enable(~i_stall && ~o_writing_instruction_mem && ~o_mode),
         .i_data({
             rs_dir, // [128:124]
             reg_a, // [123:92]
@@ -391,7 +391,7 @@ module mips #(
     ) EX_MEM (
         .clk(i_clk),
         .rst(i_rst || reset_debug),
-        .i_enable(~i_stall && ~o_writing_instruction_mem),
+        .i_enable(~i_stall && ~o_writing_instruction_mem && ~o_mode),
         .i_data({
             id_to_ex[3], // J_RET_DST[77]
             id_to_ex[4], //MEM_TO_REG [76]
@@ -437,7 +437,7 @@ module mips #(
     ) MEM_WB (
         .clk(i_clk),
         .rst(i_rst || reset_debug),
-        .i_enable(~i_stall && ~o_writing_instruction_mem),
+        .i_enable(~i_stall && ~o_writing_instruction_mem && ~o_mode),
         .i_data({
             ex_to_mem[77], //destiny return address [71]
             ex_to_mem[68:37], // alu result [70:39]

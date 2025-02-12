@@ -76,7 +76,7 @@ module tb_top;
     reg [31:0]regs[31:0];
     reg done = 0;
     baudrate_generator #(
-        .COUNT(325)
+        .COUNT(261)
     ) baud_gen (
         .clk(i_clk),
         .reset(i_rst),
@@ -128,7 +128,7 @@ module tb_top;
         #1000 i_rst = 0;
 
         // Set continuous mode
-        send_uart_command(8'h09); // Command to set continuous mode
+        send_uart_command(8'h08); // Command to set continuous mode
         // Load a short test program
         send_uart_command(8'h07); // Command to start loading program
         send_uart_command(8'd13); // Cantidad de instrucciones a cargar
@@ -235,8 +235,17 @@ module tb_top;
         wait_for_ready();
 
         send_uart_command(8'h0D); // Command to start program
-        send_uart_command(8'h08); // Command to set continuous mode
-
+        send_uart_command(8'h0A); // Command to set continuous mode
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
+        send_uart_command(8'h0A);
                 
         //send_uart_command(8'h0B);
         //send_uart_command(8'h02);

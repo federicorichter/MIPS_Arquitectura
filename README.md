@@ -22,11 +22,11 @@ Utilizando el lenguaje de descripción de Hardware Verilog y la plataforma Vivad
 En la arquitectura MIPS contamos con tres tipos de instrucciones: **R, I y J**.
 
 - **Instrucciones tipo R:** Operaciones aritméticas y lógicas. El opcode es siempre `000000` y la función se determina en los 6 bits menos significativos.
-![image](https://github.com/user-attachments/assets/aabd4949-8c5f-4e58-b97c-545dd905f0b1)
+  ![image](https://github.com/user-attachments/assets/aabd4949-8c5f-4e58-b97c-545dd905f0b1)
 - **Instrucciones tipo I:** Se realizan entre un registro y un inmediato. El opcode en los 6 bits más significativos determina la operación.
-![image](https://github.com/user-attachments/assets/04be5045-e039-4907-9d87-09ec0eacd498)
+  ![image](https://github.com/user-attachments/assets/04be5045-e039-4907-9d87-09ec0eacd498)
 - **Instrucciones tipo J:** Representan saltos incondicionales. La dirección de destino se encuentra en los bits menos significativos.
-![image](https://github.com/user-attachments/assets/0360e80e-f955-4d6f-85a8-bd19861c93f1)
+  ![image](https://github.com/user-attachments/assets/0360e80e-f955-4d6f-85a8-bd19861c93f1)
 
 Las instrucciones implementadas incluyen: `SLL, SRL, SRA, SLLV, SRLV, SRAV, ADDU, SUBU, AND, OR, XOR, NOR, SLT, SLTU, LB, LH, LW, LWU, LBU, LHU, SB, SH, SW, ADDI, ADDIU, ANDI, ORI, XORI, LUI, SLTI, SLTIU, BEQ, BNE, J, JAL, JR, JALR`.
 

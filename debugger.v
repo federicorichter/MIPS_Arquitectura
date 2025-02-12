@@ -24,7 +24,6 @@ module debugger #(
     input wire [SIZE-1:0] i_pc,                 // Valor del contador de programa
     input wire [SIZE*MEM_SIZE-1:0] i_debug_instructions, // Contenido de la memoria de instrucciones para depuración
     output wire o_mode,                          // Modo de depuración: 0 = continuo, 1 = paso a paso
-    output wire o_debug_clk,                    // Señal de reloj para depuración (puede ser el reloj del sistema o el reloj de paso)
     output reg [ADDR_WIDTH-1:0] o_debug_addr,   // Dirección para la depuración de la memoria de datos
     output reg [ADDR_WIDTH-1:0] o_write_addr_reg, // Dirección para la escritura de la memoria de instrucciones
     output reg o_inst_write_enable_reg,         // Señal de habilitación para la escritura de la memoria de instrucciones
@@ -915,8 +914,6 @@ end
             // Si el estado actual no coincide con ninguno de los estados definidos, volver al estado IDLE.
         endcase
     end
-
-    // Asignar la señal de reloj de depuración. Si el modo de depuración está activo o el PC es mayor o igual que el valor de parada del PC más 5, usar el reloj de paso; de lo contrario, usar el reloj del sistema.
 
     assign uart_tx_start = uart_tx_start_reg;
     // Asignar la señal de inicio de transmisión UART al registro de inicio de transmisión UART.

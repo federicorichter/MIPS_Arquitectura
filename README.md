@@ -5,6 +5,9 @@
 
 **Facultad de Ciencias Exactas, Físicas y Naturales**
 
+![Uploading image.png…]()
+
+
 ### Grupo: Federico Richter - Joaquín Otalora  
 **Materia:** Arquitectura de Computadoras  
 **Año:** 2024  

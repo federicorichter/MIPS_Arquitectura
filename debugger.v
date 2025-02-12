@@ -60,7 +60,7 @@ module debugger #(
     wire [7:0] uart_rx_data;                   // Datos UART recibidos
     wire [7:0] uart_tx_data;                   // Datos UART a transmitir
     wire uart_rx_done;                        // Señal de finalización de recepción UART
-    reg single_pulse
+    reg single_pulse;
     reg [IF_ID_SIZE-1:0] i_IF_ID_REG;
     reg send_idle_ack_flag;
     reg [ADDR_WIDTH-1:0] o_write_addr = 0;       // Dirección para la escritura de la memoria de instrucciones

@@ -72,6 +72,7 @@ module debugger #(
     reg [31:0] step_counter;
     reg step_active;
     reg one_pulse_low;
+    reg step_signal_internal;
 
     // Estados de la máquina de estados
     localparam IDLE = 0;                           // Estado inicial
@@ -241,19 +242,38 @@ module debugger #(
         end
     end
 
+    reg in_step_mode;
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             in_step_mode <= 0;
         end else begin
             if (state == IDLE && uart_rx_done_reg) begin
                 case (uart_rx_data_reg)
-                    8'h09: in_step_mode <= 1; // Entrar en modo paso a paso
-                    8'h08: in_step_mode <= 0; // Entrar en modo continuo
+                    8'h09: in_step_mode <= 1;
+                    8'h08: in_step_mode <= 0;
                 endcase
             end
         end
     end
 
+    always @(posedge i_clk or posedge i_reset) begin
+        if (i_reset) begin
+            step_signal <= 0;
+            step_signal_internal <= 0;
+        end else begin
+            if (o_mode == 0) begin
+                step_signal <= 0;
+                step_signal_internal <= 0;
+            end else begin
+                if (in_step_mode) begin
+                    step_signal_internal <= 1;
+                end else begin
+                    step_signal_internal <= single_pulse_internal;
+                end
+                step_signal <= step_signal_internal;
+            end
+        end
+    end
 
     // Actualizar contadores y dirección de escritura
     always @(posedge i_clk or posedge i_reset) begin
@@ -293,24 +313,12 @@ module debugger #(
             reset_counter <= 0;
             reset_active <= 0;
             o_prog_reset <= 0;
-            step_signal <= 0;
             one_pulse_low <= 0;
         end else begin
             state <= next_state;
             state_out <= state;
             reset_counter <= next_reset_counter;
             o_prog_reset <= next_prog_reset;
-
-            if (o_mode == 0) begin
-                step_signal <= 0;
-                one_pulse_low <= 0;
-            end else if (state == STEP_CLOCK) begin
-                step_signal <= 1;
-                one_pulse_low <= 1;
-            end else if (one_pulse_low) begin
-                step_signal <= 0;
-                one_pulse_low <= 0;
-            end
         end
     end
 
@@ -824,17 +832,36 @@ module debugger #(
         end
     end
 
+    reg single_pulse_done;
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
             step_signal <= 0;
+            single_pulse_internal <= 0;
+            single_pulse_done <= 0;
         end else begin
             if (o_mode == 0) begin
                 step_signal <= 0;
+                single_pulse_internal <= 0;
+                single_pulse_done <= 0;
             end else begin
                 if (in_step_mode) begin
                     step_signal <= 1;
+                    single_pulse_internal <= 0;
+                    single_pulse_done <= 0;
                 end else begin
-                    step_signal <= single_pulse_internal;
+                    if (state == IDLE && uart_rx_done_reg && uart_rx_data_reg == 8'h0A && !single_pulse_done) begin
+                        step_signal <= 1;
+                        single_pulse_internal <= 1;
+                        single_pulse_done <= 1;
+                    end else if (single_pulse_internal) begin
+                        step_signal <= 0;
+                        single_pulse_internal <= 0;
+                        single_pulse_done <= 1;
+                    end else begin
+                        step_signal <= 0;
+                        single_pulse_internal <= 0;
+                        single_pulse_done <= 0;
+                    end
                 end
             end
         end

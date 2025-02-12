@@ -34,36 +34,45 @@ def load_instructions_from_coe(filename):
 
 def send_uart_command(ser, command):
     ser.write(command.to_bytes(1, byteorder='big'))
-    print(f"Command sent: {command:02X} (hex), {command:08b} (bin)")
+    #print(f"Command sent: {command:02X} (hex), {command:08b} (bin)")
 
 def send_uart_data(ser, data, data_size):
     for i in range(data_size // 8):
         byte = (data >> (8 * i)) & 0xFF
         send_uart_command(ser, byte)
-        time.sleep(0.01)
+        time.sleep(0.1)
 
 def receive_data_from_uart(ser, num_bytes):
     data = ser.read(num_bytes)
     if len(data) < num_bytes:
         print(f"Warning: Received {len(data)} bytes, expected {num_bytes}.")
-    print("Data received:", " ".join(f"{byte:02X}" for byte in data))
+    #print("Data received:", " ".join(f"{byte:02X}" for byte in data))
     return data
 
 def wait_for_ready(ser):
     print("Waiting for 'R'...")
+    start_time = time.time()
     while True:
         response = ser.read(1)
         if response == b'R':
             print("Ready signal received.")
             break
+        if time.time() - start_time > 5:
+            print("Timeout waiting for 'R'.")
+            return False  # Indicate timeout
+    return True  # Indicate success
 
 def send_instructions(ser, instructions):
+    print("Sending instructions to instruction memory...")
     send_uart_command(ser, 0x07)  # Start loading program
     send_uart_command(ser, len(instructions))  # Number of instructions
     for instruction in instructions:
         send_uart_data(ser, instruction, 32)
         time.sleep(0.01)
-    wait_for_ready(ser)
+    if wait_for_ready(ser):
+        print("Instructions loaded successfully.")
+    else:
+        print("Error loading instructions.")
 
 def request_latch(ser, latch_command, expected_size):
     if latch_command not in range(0x01, 0x06):
@@ -143,8 +152,8 @@ def main():
                 print(f"Requesting {latch_name} latch...")
                 command, size = latch_data[choice]
                 data = request_latch(ser, command, size)
-                print(f"{latch_name} Data: {data}")
-                print(f"{latch_name} Data in bits: {' '.join(f'{byte:08b}' for byte in data)}")
+                #print(f"{latch_name} Data: {data}")
+                #print(f"{latch_name} Data in bits: {' '.join(f'{byte:08b}' for byte in data)}")
                 print(f"{latch_name} Data in hex: {' '.join(f'{byte:02X}' for byte in data)}")
                 data_decimal = [int.from_bytes(data[i:i+4], byteorder='little') for i in range(0, len(data), 4)]
                 print(f"{latch_name} Data in decimal (32-bit): {data_decimal}")
@@ -170,15 +179,16 @@ def main():
             elif choice == "13":
                 print("Requesting instruction memory...")
                 data = request_instruction_memory(ser)
-                print(f"Instruction Memory Data: {data}")
-                print(f"Instruction Memory Data in bits: {' '.join(f'{byte:08b}' for byte in data)}")
+                #print(f"Instruction Memory Data: {data}")
+                #print(f"Instruction Memory Data in bits: {' '.join(f'{byte:08b}' for byte in data)}")
+                print(f"Instruction Memory Data in hex: {' '.join(f'{byte:02X}' for byte in data)}")
 
             elif choice == "14":
                 send_uart_command(ser, 0x11)  # Request PC
                 pc_data = receive_data_from_uart(ser, 4)
-                print(f"PC Data: {pc_data}")
-                print(f"PC Data in bits: {' '.join(f'{byte:08b}' for byte in pc_data)}")
-                print(f"PC Data in hex: {' '.join(f'{byte:02X}' for byte in pc_data)}")
+                #print(f"PC Data: {pc_data}")
+                #print(f"PC Data in bits: {' '.join(f'{byte:08b}' for byte in pc_data)}")
+                #print(f"PC Data in hex: {' '.join(f'{byte:02X}' for byte in pc_data)}")
                 pc_value = int.from_bytes(pc_data, byteorder='little')
                 print(f"PC Value: {pc_value}")
                 wait_for_ready(ser)

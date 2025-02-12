@@ -89,7 +89,7 @@ module mips #(
     wire uart_rx_done, uart_tx_start, uart_tx_full, uart_rx_empty;
     wire [7:0] uart_rx_data, uart_tx_data;
     wire baud_tick;
-    wire step_signal;
+    wire o_mode;
     wire clk_mem_read;
     wire hazard_output;
     wire [SIZE-1:0] reg_a_conditional, reg_b_conditional;
@@ -130,7 +130,7 @@ module mips #(
         .i_debug_instructions(i_debug_instructions),
         .i_pc(pc_value),
         .o_mode(o_mode),
-        .step_signal(step_signal),
+        //.o_mode(o_mode),
         .o_debug_addr(debug_addr),
         .o_inst_write_enable_reg(i_inst_write_enable),
         .o_write_addr_reg(i_write_addr),
@@ -182,7 +182,7 @@ module mips #(
         .i_clk_write(i_clk),
         .i_rst_debug(i_rst || reset_debug),
         .i_rst(i_rst),
-        .i_stall(i_stall || o_writing_instruction_mem || hazard_output || step_signal), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
+        .i_stall(i_stall || o_writing_instruction_mem || hazard_output || o_mode), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
         .i_pc(pc_if),
         //.i_mux_selec(pc_source), // selector del mux
         .o_instruction(instruction), // salida:instruccion
@@ -298,7 +298,7 @@ module mips #(
         .SIZE_REG_DIR($clog2(NUM_REGISTERS)),
         .SIZE_OP(6)
     ) ID (
-        .i_stall(i_stall || o_writing_instruction_mem || step_signal),
+        .i_stall(i_stall || o_writing_instruction_mem || o_mode),
         .i_instruction(if_to_id[31:0]),
         .rst(i_rst || reset_debug),
         .clk(i_clk),
@@ -415,7 +415,7 @@ module mips #(
     ) MEM (
         .clk(i_clk),
         .clk2(i_clk),
-        .i_stall(step_signal),
+        .i_stall(o_mode),
         .rst(i_rst || reset_debug),
         .i_mem_write(ex_to_mem[71]),
         .i_mem_read(ex_to_mem[70]),

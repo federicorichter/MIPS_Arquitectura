@@ -7,7 +7,6 @@
 
 ![image](https://github.com/user-attachments/assets/70ccfa04-87b9-4431-a122-28e955776985)
 
-
 ### Grupo: Federico Richter - Joaquín Otalora  
 **Materia:** Arquitectura de Computadoras  
 **Año:** 2024  
@@ -49,7 +48,6 @@ El pipeline consta de cinco etapas que transmiten datos y señales de control a 
 
 ![image](https://github.com/user-attachments/assets/333bbefa-7038-41ef-b8ac-b830b0333a5f)
 
-
 ---
 
 ## Señales de Control
@@ -80,61 +78,38 @@ Existen tres tipos de riesgos en el procesador:
 
 ## Debugger
 
-El módulo `debugger.v` ofrece un conjunto de utilidades para observar y controlar la ejecución del procesador MIPS, permitiendo:
+El módulo `debugger.v` permite inspeccionar y controlar la ejecución del procesador MIPS. Entre sus funcionalidades se incluyen:
 
-- Visualización y edición del contenido de registros internos.
-- Examinación de memoria de datos.
-- Carga de programas en la memoria de instrucciones.
-- Ejecución en modo continuo o paso a paso.
+- Visualización y modificación de registros internos.
+- Examinación de la memoria de datos.
+- Carga y ejecución de programas en la memoria de instrucciones.
+- Ejecución paso a paso o en modo continuo.
 
-La comunicación se realiza mediante UART, permitiendo interacción remota.
+### Parámetros de Configuración
 
-## 1. Parámetros de Configuración
-
-- `SIZE`: Ancho de los datos.
+- `SIZE`: Tamaño de los datos.
 - `NUM_REGISTERS`: Número de registros.
-- `MEM_SIZE`: Tamaño de la memoria de datos.
-- `STEP_CYCLES`: Cantidad de ciclos de reloj para el modo paso a paso.
+- `MEM_SIZE`: Tamaño de la memoria.
+- `STEP_CYCLES`: Ciclos de reloj por paso.
 
-## 2. Interfaz del Módulo
+### Interfaz del Módulo
 
-### Entradas Principales
+**Entradas:**  
+`i_clk`, `i_reset`, `i_uart_rx`, `i_registers_debug`, `i_IF_ID`, `i_ID_EX`, `i_EX_MEM`, `i_MEM_WB`, `i_debug_data`, `i_pc`, `i_debug_instructions`.
 
-- `i_clk`, `i_reset`: Reloj y reset.
-- `i_uart_rx`: Entrada UART.
-- `i_registers_debug`: Lectura de registros.
-- `i_IF_ID`, `i_ID_EX`, `i_EX_MEM`, `i_MEM_WB`: Contenidos de los latches del pipeline.
-- `i_debug_data`: Lectura de memoria de datos.
-- `i_pc`: Contador de programa.
-- `i_debug_instructions`: Memoria completa de instrucciones.
+**Salidas:**  
+`o_uart_tx`, `o_mode`, `o_debug_addr`, `o_write_addr_reg`, `o_inst_write_enable_reg`, `o_write_data_reg`, `o_prog_reset`.
 
-### Salidas Principales
-
-- `o_uart_tx`: Transmisión UART.
-- `o_mode`: Modo de depuración.
-- `o_debug_addr`: Dirección de depuración de memoria.
-- `o_write_addr_reg`, `o_inst_write_enable_reg`, `o_write_data_reg`: Escritura de memoria de instrucciones.
-- `o_prog_reset`: Pulso de reset del pipeline.
-
-## 3. Funcionamiento General
-
-El depurador usa una máquina de estados:
+### Funcionamiento General
 
 1. **IDLE:** Espera comandos.
-2. **Recepción del Comando:** Decodifica la acción a realizar.
-3. **Ejecución:** Envía registros, modifica memorias, cambia de modo, o resetea el pipeline.
-4. **Confirmación (ACK):** En algunos casos, responde con 'R' tras completar la acción.
+2. **Recepción:** Decodifica el comando recibido.
+3. **Ejecución:** Modifica registros, memoria o control del pipeline.
+4. **ACK:** Responde con 'R' tras completar acciones clave.
 
-## 4. Interacción con el Procesador MIPS
+### Comandos Implementados
 
-- **Lectura de registros y latches:** Envía estados de los registros y pipeline.
-- **Escritura en memoria de instrucciones:** Permite cargar instrucciones y resetear el pipeline.
-- **Acceso a memoria de datos:** Lee y escribe direcciones de memoria.
-- **Modo Paso a Paso y StopPC:** Permite pausas controladas en la ejecución.
-
-## 5. Comandos Implementados
-
-Algunos de los comandos más relevantes:
+Algunos comandos disponibles:
 
 - `0x01`: Lectura de registros.
 - `0x06`: Lectura de memoria.
@@ -144,16 +119,13 @@ Algunos de los comandos más relevantes:
 - `0x0A`: Ejecución de un paso.
 - `0x0E`: Configuración de StopPC.
 
-## 6. Carga de Programas
+### Carga de Programas
 
 1. Enviar `0x07`.
-2. Enviar el número de instrucciones.
+2. Especificar número de instrucciones.
 3. Enviar cada instrucción (4 bytes).
 4. Esperar el ACK ('R').
 5. Enviar `0x0D` para iniciar ejecución.
 
-## 7. Diagrama de Estados del debugger
-
-Puedes ver el diagrama de estados del depurador a continuación:
-
 ![Diagrama de Estados del Depurador](scripts/Debugger_State_Diagram.svg)
+

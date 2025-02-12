@@ -5,7 +5,7 @@
 
 **Facultad de Ciencias Exactas, Físicas y Naturales**
 
-![Uploading image.png…]()
+![image](https://github.com/user-attachments/assets/70ccfa04-87b9-4431-a122-28e955776985)
 
 
 ### Grupo: Federico Richter - Joaquín Otalora  

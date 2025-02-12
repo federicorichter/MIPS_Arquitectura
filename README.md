@@ -6,4 +6,4 @@ Este proyecto contiene la implementación de una arquitectura MIPS.
 
 Puedes ver el diagrama de estados del depurador a continuación:
 
-![Diagrama de Estados del Depurador](MIPS_Arquitectura/scripts/DEBUGGER_STATE_DIAGARAM.SVG)
+![Diagrama de Estados del Depurador](scripts/Debugger_State_Diagram.svg)

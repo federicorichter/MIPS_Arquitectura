@@ -35,13 +35,18 @@ module register_bank #(
         end
     end
 
-    always @(negedge clk)begin
-        reg_A <= registers[i_dir_regA];
-        reg_B <= registers[i_dir_regB];
-        
-        // Actualizar el arreglo de depuración
-        for (i = 0; i < NUM_REGISTERS; i = i + 1) begin
-            registers_debug[i*SIZE +: SIZE] <= registers[i];
+    always @(negedge clk or posedge rst)begin
+        if(rst)begin
+            registers_debug <= 0;
+        end
+        else begin
+            reg_A <= registers[i_dir_regA];
+            reg_B <= registers[i_dir_regB];
+
+            // Actualizar el arreglo de depuración
+            for (i = 0; i < NUM_REGISTERS; i = i + 1) begin
+                registers_debug[i*SIZE +: SIZE] <= registers[i];
+            end
         end
     end
 

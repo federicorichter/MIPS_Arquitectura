@@ -329,7 +329,7 @@ module mips #(
     ) adder_pc_immediate(
         .i_stall(i_stall || i_inst_write_enable),
         .i_a(if_to_id[63:32]),
-        .i_b(immediate),
+        .i_b(immediate << 2),
         .o_result(immediate_plus_pc)
     );
 

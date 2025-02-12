@@ -154,7 +154,7 @@ module debugger #(
     // Módulos UART
     wire tick;                                  // Tick de reloj para UART
     baudrate_generator #(
-        .COUNT(325)                             // Conteo del generador de velocidad de baudios
+        .COUNT(261)                             // Conteo del generador de velocidad de baudios
     ) baud_gen (
         .clk(i_clk),                           // Reloj del sistema
         .reset(i_reset),                         // Señal de reset
@@ -289,7 +289,7 @@ module debugger #(
         next_write_addr = o_write_addr;
         next_send_debug_instructions_counter = send_debug_instructions_counter;
         uart_tx_start_reg = 0;                    // Resetear el inicio de TX por defecto
-        stop_pc = instruction_count ;
+        stop_pc = instruction_count;
         case (state)
             IDLE: begin
                 uart_tx_start_reg = 0;            // Asegurarse de que TX no esté activo

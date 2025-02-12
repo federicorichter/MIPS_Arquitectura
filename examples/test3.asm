@@ -1,5 +1,5 @@
 # test3.asm - Prueba de load/store halfword
-lui $1, 1      # LUI R1, 1
+lui $1, 0x0003 # LUI R1, 3
 lui $3, 3      # LUI R3, 3
 addi $0, $0, 0 # NOP
 addi $0, $0, 0 # NOP

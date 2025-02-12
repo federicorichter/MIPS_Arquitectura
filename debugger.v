@@ -150,7 +150,7 @@ module debugger #(
     reg [31:0] next_send_debug_instructions_counter = 0;
     reg next_prog_reset;
     reg [3:0] next_reset_counter;
-
+    reg o_mode_reg = 0;                        // Modo de depuración
     // Módulos UART
     wire tick;                                  // Tick de reloj para UART
     baudrate_generator #(
@@ -255,42 +255,26 @@ module debugger #(
             instruction_counter_out <= instruction_counter[4:0]; // Cargar los 5 bits menos significativos
         end
     end
-
-    // Lógica de la máquina de estados
-    always @(posedge i_clk or posedge i_reset) begin
-        if (i_reset) begin
-            state <= IDLE;
-            state_out <= IDLE;
-            reset_counter <= 0;
-            reset_active <= 0;
-            o_prog_reset <= 0;
-        end else begin
-            state <= next_state;
-            state_out <= state;
-            reset_counter <= next_reset_counter;
-            o_prog_reset <= next_prog_reset;
-        end
-    end
-
-    assign o_mode = o_mode_reg;
+assign o_mode = o_mode_reg;
 
 
-reg o_mode_reg;  // Registro para o_mode
-reg mode_restore; // Flag para restaurar el modo
+reg next_mode;
 
-// Añadir este bloque always después del bloque de la máquina de estados principal
+// En el bloque always de la máquina de estados principal:
 always @(posedge i_clk or posedge i_reset) begin
     if (i_reset) begin
-        o_mode_reg <= 0;
-        mode_restore <= 0;
+        state <= IDLE;
+        state_out <= IDLE;
+        reset_counter <= 0;
+        reset_active <= 0;
+        o_prog_reset <= 0;
+        o_mode_reg <= 0;  // Añadir inicialización de o_mode_reg
     end else begin
-        if (state == STEP_CLOCK && o_mode_reg) begin
-            o_mode_reg <= 0;
-            mode_restore <= 1;
-        end else if (mode_restore) begin
-            o_mode_reg <= 1;
-            mode_restore <= 0;
-        end
+        state <= next_state;
+        state_out <= state;
+        reset_counter <= next_reset_counter;
+        o_prog_reset <= next_prog_reset;
+        o_mode_reg <= next_mode;  // Actualizar o_mode_reg
     end
 end
 
@@ -312,6 +296,8 @@ end
         next_send_debug_instructions_counter = send_debug_instructions_counter;
         uart_tx_start_reg = 0;                    // Resetear el inicio de TX por defecto
         stop_pc = instruction_count;
+        next_mode = (i_pc >= stop_pc + 5) ? 1'b1 : o_mode_reg; // Si PC >= stop_pc+5, activar modo paso a paso    
+
         case (state)
             IDLE: begin
                 uart_tx_start_reg = 0;            // Asegurarse de que TX no esté activo
@@ -343,20 +329,20 @@ end
                         8'h04: next_state = WAIT_RX_DONE_DOWN_SEND_EX_MEM; // Enviar EX/MEM
                         8'h05: next_state = WAIT_RX_DONE_DOWN_SEND_MEM_WB; // Enviar MEM/WB
                         8'h06: next_state = WAIT_RX_DONE_DOWN_SEND_MEMORY; // Enviar memoria de datos
-                        8'h07: begin             // Cargar programa
-                            next_write_addr = 0;  // Empezar a escribir en la dirección 0
-                            o_mode_reg = 1;           // Entrar en modo paso a paso
-                            o_inst_write_enable = 1;
-                            next_state = WAIT_RX_DONE_DOWN_RECEIVE_INSTRUCTION_COUNT;
-                        end
-                        8'h08: begin             // Modo continuo
-                            o_mode_reg = 0;           // Entrar en modo continuo
-                            next_state = WAIT_RX_DONE_DOWN_IDLE;
-                        end
-                        8'h09: begin             // Modo paso a paso
-                            o_mode_reg = 1;           // Entrar en modo paso a paso
-                            next_state = WAIT_RX_DONE_DOWN_IDLE;
-                        end
+                    8'h07: begin
+                        next_write_addr = 0;
+                        next_mode = 1;  // Usar next_mode en lugar de asignación directa
+                        o_inst_write_enable = 1;
+                        next_state = WAIT_RX_DONE_DOWN_RECEIVE_INSTRUCTION_COUNT;
+                    end
+                    8'h08: begin
+                        next_mode = 0;  // Usar next_mode en lugar de asignación directa
+                        next_state = WAIT_RX_DONE_DOWN_IDLE;
+                    end
+                    8'h09: begin
+                        next_mode = 1;  // Usar next_mode en lugar de asignación directa
+                        next_state = WAIT_RX_DONE_DOWN_IDLE;
+                    end
                         8'h0A: next_state = STEP_CLOCK; // Paso de un ciclo de reloj
                         8'h0B: next_state = WAIT_RX_DONE_DOWN_RECEIVE_ADDRESS; // Leer memoria de datos
                         8'h0E: next_state = WAIT_RX_DOWN_STOP_PC; // Recibir valor de parada del PC
@@ -781,13 +767,16 @@ end
                 end
             end
 
+            // Modificar el estado STEP_CLOCK:
             STEP_CLOCK: begin
-                // Estado para generar un solo ciclo de reloj en modo paso a paso.
-                if (!step_active || (step_active && step_counter == STEP_CYCLES - 1)) begin
-                    // Si el modo paso a paso no está activo o si el contador de pasos ha alcanzado su valor máximo.
-                    next_state = IDLE;
-                    // Volver al estado IDLE.
-                end
+                next_mode = 0;  // Desactivar modo paso a paso por un ciclo
+                next_state = WAIT_STEP;  // Ir a estado de espera para restaurar el modo
+            end
+            
+            // Añadir estado WAIT_STEP:
+            WAIT_STEP: begin
+                next_mode = 1;  // Restaurar modo paso a paso
+                next_state = IDLE;
             end
 
             WAIT_RX_DOWN_STOP_PC: begin
@@ -926,53 +915,7 @@ end
             // Si el estado actual no coincide con ninguno de los estados definidos, volver al estado IDLE.
         endcase
     end
-    // Generación de reloj para el modo paso a paso y el modo continuo
-    always @(posedge i_clk or posedge i_reset) begin
-        // Bloque always que se ejecuta en cada flanco de subida del reloj o en el reset.
-        if (i_reset) begin
-            // Si la señal de reset está activa.
-            step_counter <= 0;
-            // Reiniciar el contador de pasos.
-            step_active <= 0;
-            // Desactivar el modo paso a paso.
-            step_clk <= 0;
-            // Establecer el reloj de paso a 0.
-        end else begin
-            // Si la señal de reset no está activa.
-            if (state == STEP_CLOCK) begin
-                // Si la máquina de estados está en el estado STEP_CLOCK.
-                if (!step_active) begin
-                    // Si el modo paso a paso no está activo.
-                    step_active <= 1;
-                    // Activar el modo paso a paso.
-                    step_counter <= 0;
-                    // Reiniciar el contador de pasos.
-                    step_clk <= 1;  // Start with rising edge
-                    // Establecer el reloj de paso a 1 (flanco de subida).
-                end else if (step_counter < STEP_CYCLES - 1) begin
-                    // Si el contador de pasos es menor que el número de ciclos por paso menos 1.
-                    step_counter <= step_counter + 1;
-                    // Incrementar el contador de pasos.
-                    step_clk <= ~step_clk;  // Toggle clock
-                    // Invertir el reloj de paso (alternar entre 0 y 1).
-                end else begin
-                    // Si el contador de pasos ha alcanzado su valor máximo.
-                    step_active <= 0;
-                    // Desactivar el modo paso a paso.
-                    step_clk <= 0;
-                    // Establecer el reloj de paso a 0.
-                end
-            end else begin
-                // Si la máquina de estados no está en el estado STEP_CLOCK.
-                step_active <= 0;
-                // Desactivar el modo paso a paso.
-                step_clk <= 0;
-                // Establecer el reloj de paso a 0.
-                step_counter <= 0;
-                // Reiniciar el contador de pasos.
-            end
-        end
-    end
+
     assign o_debug_clk = (o_mode || i_pc >= stop_pc + 5) ? step_clk : i_clk;
     // Asignar la señal de reloj de depuración. Si el modo de depuración está activo o el PC es mayor o igual que el valor de parada del PC más 5, usar el reloj de paso; de lo contrario, usar el reloj del sistema.
 

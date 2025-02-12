@@ -4,7 +4,7 @@ import time
 import sys
 import argparse
 
-def setup_serial(port='/dev/ttyUSB1', baudrate=9543, timeout=1):
+def setup_serial(port='/dev/ttyUSB1', baudrate=9600, timeout=1):
     try:
         ser = serial.Serial(port, baudrate, timeout=timeout, parity=serial.PARITY_NONE)
         print(f"Serial port {port} opened successfully.")
@@ -17,6 +17,7 @@ def load_instructions_from_coe(filename):
     try:
         with open(filename, 'r') as file:
             instructions = []
+            instructions.append(0)
             for line in file:
                 # Remove whitespace and commas
                 line = line.strip().rstrip(',')
@@ -58,12 +59,9 @@ def wait_for_ready(ser):
 
 def send_instructions(ser, instructions):
     send_uart_command(ser, 0x07)  # Start loading program
-    send_uart_command(ser, len(instructions) + 15)  # Number of instructions + padding
+    send_uart_command(ser, len(instructions))  # Number of instructions
     for instruction in instructions:
         send_uart_data(ser, instruction, 32)
-        time.sleep(0.01)
-    for _ in range(15):  # Add 15 padding instructions
-        send_uart_data(ser, 0, 32)
         time.sleep(0.01)
     wait_for_ready(ser)
 
@@ -72,10 +70,11 @@ def request_latch(ser, latch_command, expected_size):
         raise ValueError("Invalid latch command.")
     send_uart_command(ser, latch_command)
     latchdata = receive_data_from_uart(ser, expected_size)
-    if(latch_command == 0x01):
+    if latch_command == 0x01:
         print("Registers received:")
         for i in range(0, 128, 4):
-            print(f"R{i/4}: {latchdata[i:i+4].hex()}")
+            reg_value = int.from_bytes(latchdata[i:i+4], byteorder='little')
+            print(f"R{i//4}: {reg_value}")
     return latchdata
 
 def request_instruction_memory(ser):
@@ -146,6 +145,9 @@ def main():
                 data = request_latch(ser, command, size)
                 print(f"{latch_name} Data: {data}")
                 print(f"{latch_name} Data in bits: {' '.join(f'{byte:08b}' for byte in data)}")
+                print(f"{latch_name} Data in hex: {' '.join(f'{byte:02X}' for byte in data)}")
+                data_decimal = [int.from_bytes(data[i:i+4], byteorder='little') for i in range(0, len(data), 4)]
+                print(f"{latch_name} Data in decimal (32-bit): {data_decimal}")
                 wait_for_ready(ser)
            
             elif choice == "10":
@@ -176,6 +178,9 @@ def main():
                 pc_data = receive_data_from_uart(ser, 4)
                 print(f"PC Data: {pc_data}")
                 print(f"PC Data in bits: {' '.join(f'{byte:08b}' for byte in pc_data)}")
+                print(f"PC Data in hex: {' '.join(f'{byte:02X}' for byte in pc_data)}")
+                pc_value = int.from_bytes(pc_data, byteorder='little')
+                print(f"PC Value: {pc_value}")
                 wait_for_ready(ser)
 
             elif choice == "0":

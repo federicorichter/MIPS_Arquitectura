@@ -24,7 +24,7 @@ module debugger #(
     input wire [SIZE-1:0] i_pc,                 // Valor del contador de programa
     input wire [SIZE*MEM_SIZE-1:0] i_debug_instructions, // Contenido de la memoria de instrucciones para depuración
     output reg o_mode,                          // Modo de depuración: 0 = continuo, 1 = paso a paso
-    output wire o_debug_clk,                    // Señal de reloj para depuración (puede ser el reloj del sistema o el reloj de paso)
+    output reg o_debug_clk,                    // Señal de reloj para depuración (puede ser el reloj del sistema o el reloj de paso)
     output reg [ADDR_WIDTH-1:0] o_debug_addr,   // Dirección para la depuración de la memoria de datos
     output reg [ADDR_WIDTH-1:0] o_write_addr_reg, // Dirección para la escritura de la memoria de instrucciones
     output reg o_inst_write_enable_reg,         // Señal de habilitación para la escritura de la memoria de instrucciones
@@ -69,6 +69,7 @@ module debugger #(
     reg step_complete;
     reg [31:0] step_counter;
     reg step_active;
+    reg one_pulse_low;
 
     // Estados de la máquina de estados
     localparam IDLE = 0;                           // Estado inicial
@@ -264,11 +265,24 @@ module debugger #(
             reset_counter <= 0;
             reset_active <= 0;
             o_prog_reset <= 0;
+            o_debug_clk <= 0;
+            one_pulse_low <= 0;
         end else begin
             state <= next_state;
             state_out <= state;
             reset_counter <= next_reset_counter;
             o_prog_reset <= next_prog_reset;
+
+            if (o_mode == 0) begin
+                o_debug_clk <= 0;
+                one_pulse_low <= 0;
+            end else if (state == STEP_CLOCK) begin
+                o_debug_clk <= 1;
+                one_pulse_low <= 1;
+            end else if (one_pulse_low) begin
+                o_debug_clk <= 0;
+                one_pulse_low <= 0;
+            end
         end
     end
 
@@ -915,6 +929,7 @@ module debugger #(
             // Desactivar el modo paso a paso.
             step_clk <= 0;
             // Establecer el reloj de paso a 0.
+            single_pulse <= 0; // Inicializar single_pulse en reset
         end else begin
             // Si la señal de reset no está activa.
             if (state == STEP_CLOCK) begin
@@ -949,10 +964,33 @@ module debugger #(
                 step_counter <= 0;
                 // Reiniciar el contador de pasos.
             end
+
+            // Lógica para generar un pulso único cuando se recibe el comando STEP_CLOCK
+            if (state == IDLE && uart_rx_done_reg && uart_rx_data_reg == 8'h0A) begin
+                single_pulse <= 1; // Generar un pulso
+            end else begin
+                single_pulse <= 0; // Mantener en bajo
+            end
         end
     end
-    assign o_debug_clk = (o_mode || i_pc >= stop_pc + 5) ? step_clk : i_clk;
-    // Asignar la señal de reloj de depuración. Si el modo de depuración está activo o el PC es mayor o igual que el valor de parada del PC más 5, usar el reloj de paso; de lo contrario, usar el reloj del sistema.
+
+    // Señal para indicar si estamos en modo step
+    reg in_step_mode;
+    always @(posedge i_clk or posedge i_reset) begin
+        if (i_reset) begin
+            in_step_mode <= 0;
+        end else begin
+            if (state == IDLE && uart_rx_done_reg) begin
+                case (uart_rx_data_reg)
+                    8'h09: in_step_mode <= 1; // Entrar en modo paso a paso
+                    8'h08: in_step_mode <= 0; // Entrar en modo continuo
+                endcase
+            end
+        end
+    end
+
+    // Asignación de la señal de reloj de depuración
+    assign o_debug_clk = (o_mode == 0) ? 0 : (in_step_mode ? 1 : single_pulse);
 
     assign uart_tx_start = uart_tx_start_reg;
     // Asignar la señal de inicio de transmisión UART al registro de inicio de transmisión UART.

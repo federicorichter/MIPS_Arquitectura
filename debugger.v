@@ -60,6 +60,7 @@ module debugger #(
     wire [7:0] uart_rx_data;                   // Datos UART recibidos
     wire [7:0] uart_tx_data;                   // Datos UART a transmitir
     wire uart_rx_done;                        // Señal de finalización de recepción UART
+    reg single_pulse
     reg [IF_ID_SIZE-1:0] i_IF_ID_REG;
     reg send_idle_ack_flag;
     reg [ADDR_WIDTH-1:0] o_write_addr = 0;       // Dirección para la escritura de la memoria de instrucciones
@@ -918,62 +919,6 @@ module debugger #(
             // Si el estado actual no coincide con ninguno de los estados definidos, volver al estado IDLE.
         endcase
     end
-    // Generación de reloj para el modo paso a paso y el modo continuo
-    always @(posedge i_clk or posedge i_reset) begin
-        // Bloque always que se ejecuta en cada flanco de subida del reloj o en el reset.
-        if (i_reset) begin
-            // Si la señal de reset está activa.
-            step_counter <= 0;
-            // Reiniciar el contador de pasos.
-            step_active <= 0;
-            // Desactivar el modo paso a paso.
-            step_clk <= 0;
-            // Establecer el reloj de paso a 0.
-            single_pulse <= 0; // Inicializar single_pulse en reset
-        end else begin
-            // Si la señal de reset no está activa.
-            if (state == STEP_CLOCK) begin
-                // Si la máquina de estados está en el estado STEP_CLOCK.
-                if (!step_active) begin
-                    // Si el modo paso a paso no está activo.
-                    step_active <= 1;
-                    // Activar el modo paso a paso.
-                    step_counter <= 0;
-                    // Reiniciar el contador de pasos.
-                    step_clk <= 1;  // Start with rising edge
-                    // Establecer el reloj de paso a 1 (flanco de subida).
-                end else if (step_counter < STEP_CYCLES - 1) begin
-                    // Si el contador de pasos es menor que el número de ciclos por paso menos 1.
-                    step_counter <= step_counter + 1;
-                    // Incrementar el contador de pasos.
-                    step_clk <= ~step_clk;  // Toggle clock
-                    // Invertir el reloj de paso (alternar entre 0 y 1).
-                end else begin
-                    // Si el contador de pasos ha alcanzado su valor máximo.
-                    step_active <= 0;
-                    // Desactivar el modo paso a paso.
-                    step_clk <= 0;
-                    // Establecer el reloj de paso a 0.
-                end
-            end else begin
-                // Si la máquina de estados no está en el estado STEP_CLOCK.
-                step_active <= 0;
-                // Desactivar el modo paso a paso.
-                step_clk <= 0;
-                // Establecer el reloj de paso a 0.
-                step_counter <= 0;
-                // Reiniciar el contador de pasos.
-            end
-
-            // Lógica para generar un pulso único cuando se recibe el comando STEP_CLOCK
-            if (state == IDLE && uart_rx_done_reg && uart_rx_data_reg == 8'h0A) begin
-                single_pulse <= 1; // Generar un pulso
-            end else begin
-                single_pulse <= 0; // Mantener en bajo
-            end
-        end
-    end
-
     // Señal para indicar si estamos en modo step
     reg in_step_mode;
     always @(posedge i_clk or posedge i_reset) begin

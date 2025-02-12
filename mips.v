@@ -89,7 +89,7 @@ module mips #(
     wire uart_rx_done, uart_tx_start, uart_tx_full, uart_rx_empty;
     wire [7:0] uart_rx_data, uart_tx_data;
     wire baud_tick;
-    wire clk_to_use;
+    wire stall_debuger;
     wire clk_mem_read;
     wire hazard_output;
     wire [SIZE-1:0] reg_a_conditional, reg_b_conditional;
@@ -108,7 +108,7 @@ module mips #(
     wire reset_debug;
 
 
-    always @(posedge clk_to_use or posedge i_rst or posedge reset_debug) begin
+    always @(posedge i_clk or posedge i_rst or posedge reset_debug) begin
         if (i_rst || reset_debug) begin
             if_to_id_reg <= 0;
             id_to_ex_reg <= 0;
@@ -152,7 +152,7 @@ module mips #(
         .i_debug_instructions(i_debug_instructions),
         .i_pc(pc_value),
         .o_mode(o_mode),
-        .o_debug_clk(clk_to_use),
+        .o_debug_clk(stall_debuger),
         .o_debug_addr(debug_addr),
         .o_inst_write_enable_reg(i_inst_write_enable),
         .o_write_addr_reg(i_write_addr),
@@ -200,11 +200,11 @@ module mips #(
     instruction_fetch #(
         .SIZE(32)
     ) IF (
-        .i_clk(clk_to_use),
+        .i_clk(i_clk),
         .i_clk_write(i_clk),
         .i_rst_debug(i_rst || reset_debug),
         .i_rst(i_rst),
-        .i_stall(i_stall || o_writing_instruction_mem || hazard_output), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
+        .i_stall(i_stall || o_writing_instruction_mem || hazard_output || stall_debuger), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
         .i_pc(pc_if),
         //.i_mux_selec(pc_source), // selector del mux
         .o_instruction(instruction), // salida:instruccion
@@ -216,25 +216,6 @@ module mips #(
         .o_writing_instruction_mem(o_writing_instruction_mem) // Señal de control para indicar escritura en memoria de instrucciones
     );
 
-    reg aux_flush, aux_flush_pos;
-    always @(negedge clk_to_use) begin
-         if(if_flush && ((if_to_id_reg[5:0] == 6'b001000) || (if_to_id_reg[5:0] == 6'b001001) )&& (if_to_id_reg[31:26] == 6'b000000 )) begin
-            aux_flush <= 1;
-        end
-        else begin
-            aux_flush <= 0;
-        end
-    end
-
-    always @(posedge clk_to_use) begin
-        if(aux_flush) begin
-            aux_flush_pos <= 1;
-        end
-        else begin
-            aux_flush_pos <= 0;
-        end
-
-    end
 
     wire [SIZE-1:0] instruction_input;
 
@@ -245,7 +226,7 @@ module mips #(
         .BUS_DATA(32)
     )
     IF_ID (
-        .clk(clk_to_use),
+        .clk(i_clk),
         .rst(i_rst || reset_debug ), //|| aux_flush || aux_flush_pos),
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
         .i_data({
@@ -260,7 +241,7 @@ module mips #(
         .BUS_DATA(32)
     )
     IF_ID2 (
-        .clk(clk_to_use),
+        .clk(i_clk),
         .rst(i_rst || reset_debug),
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem),
         .i_data({
@@ -339,10 +320,10 @@ module mips #(
         .SIZE_REG_DIR($clog2(NUM_REGISTERS)),
         .SIZE_OP(6)
     ) ID (
-        .i_stall(i_stall || o_writing_instruction_mem),
+        .i_stall(i_stall || o_writing_instruction_mem || stall_debuger),
         .i_instruction(if_to_id[31:0]),
         .rst(i_rst || reset_debug),
-        .clk(clk_to_use),
+        .clk(i_clk),
         .i_pc_if(if_to_id[63:32]),
         .i_jump_brch(control_signals[JUMP_B]),
         .i_write_enable(mem_to_wb[1]),
@@ -378,7 +359,7 @@ module mips #(
     latch #(
         .BUS_DATA(129)
     ) ID_EX (
-        .clk(clk_to_use),
+        .clk(i_clk),
         .rst(i_rst || reset_debug),
         .i_enable(~i_stall && ~o_writing_instruction_mem),
         .i_data({
@@ -406,7 +387,7 @@ module mips #(
         .OP_SIZE(6),
         .ALU_OP_SIZE(3)
     ) EX (
-        .clk(clk_to_use),
+        .clk(i_clk),
         .i_is_unsigned(id_to_ex[15]),
         .i_shift_mux_a(id_to_ex[9]),
         .i_src_alu_b(id_to_ex[8]),
@@ -430,7 +411,7 @@ module mips #(
     latch #(
         .BUS_DATA(78)
     ) EX_MEM (
-        .clk(clk_to_use),
+        .clk(i_clk),
         .rst(i_rst || reset_debug),
         .i_enable(~i_stall && ~o_writing_instruction_mem),
         .i_data({
@@ -454,8 +435,9 @@ module mips #(
         .DATA_WIDTH(SIZE),
         .MEM_SIZE(MEM_SIZE)
     ) MEM (
-        .clk(clk_to_use),
+        .clk(i_clk),
         .clk2(i_clk),
+        .i_stall(stall_debuger),
         .rst(i_rst || reset_debug),
         .i_mem_write(ex_to_mem[71]),
         .i_mem_read(ex_to_mem[70]),
@@ -475,7 +457,7 @@ module mips #(
     latch #(
         .BUS_DATA(72)
     ) MEM_WB (
-        .clk(clk_to_use),
+        .clk(i_clk),
         .rst(i_rst || reset_debug),
         .i_enable(~i_stall && ~o_writing_instruction_mem),
         .i_data({

@@ -5,6 +5,7 @@ module data_memory #(
 )(
     input wire clk,
     input wire clk2,
+    input wire i_stall,
     input wire rst, // Señal de reset
     input wire i_clk_mem_read,
     input wire i_mem_write,  // Señal de habilitación de escritura
@@ -47,7 +48,7 @@ module data_memory #(
             for (i = 0; i < MEM_SIZE; i = i + 1) begin
                 mem[i] <= 8'b0;
             end
-        end else if (i_mem_write && !rst) begin
+        end else if (i_mem_write && !rst &&  ~i_stall) begin
             // Escribir 32 bits (4 bytes) en la memoria con enmascaramiento
             case ({i_mask_1, i_mask_2})
                 2'b00: begin

@@ -6,6 +6,7 @@ module register_bank #(
     input wire clk,
     input wire rst,
     input wire i_write_enable,
+    input wire i_stall,
 
     input wire [SIZE_REG_DIR-1:0]i_dir_regA, //dir register A
     input wire [SIZE_REG_DIR-1:0]i_dir_regB, //dir register B
@@ -30,19 +31,16 @@ module register_bank #(
                 registers[i] <= 0;
             end
         end
-        else if(i_write_enable && i_w_dir != 0)begin
+        else if(i_write_enable && i_w_dir != 0 &&  ~i_stall)begin
             registers[i_w_dir] <= i_w_data;
         end
     end
 
-    always @(negedge clk or posedge rst)begin
-        if(rst)begin
-            registers_debug <= 0;
-        end
-        else begin
+    always @(negedge clk)begin
+            if( ~i_stall)begin
             reg_A <= registers[i_dir_regA];
             reg_B <= registers[i_dir_regB];
-
+            
             // Actualizar el arreglo de depuración
             for (i = 0; i < NUM_REGISTERS; i = i + 1) begin
                 registers_debug[i*SIZE +: SIZE] <= registers[i];

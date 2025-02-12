@@ -104,6 +104,7 @@ module instruction_decode #(
         .NUM_REGISTERS(NUM_REGISTERS)
     ) registers_inst (
         .clk(clk),
+        .i_stall(i_stall),
         .rst(rst),
         .i_write_enable(i_write_enable),
         .i_dir_regA(i_instruction[25:21]),

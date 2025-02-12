@@ -23,7 +23,7 @@ module instruction_fetch #(
     integer i;
 
     // Escritura en memoria de instrucciones
-    always @(posedge i_clk_write or posedge i_rst) begin
+    always @(posedge i_clk or posedge i_rst) begin
         if (i_rst) begin
             for (i = 0; i < MAX_INSTRUCTION; i = i + 1) begin
                 instruction_mem[i] <= 32'b0;

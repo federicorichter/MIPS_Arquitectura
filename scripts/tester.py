@@ -171,7 +171,7 @@ def main():
                     wait_for_ready(ser)
                     send_uart_command(ser, 0x06)  # Request data memory
                     data = receive_data_from_uart(ser, 4)
-                    print(f"Data Memory at position {position}: {int.from_bytes(data, byteorder='little')}")
+                    print(f"Data Memory at position {position} in hex: {' '.join(f'{byte:02X}' for byte in data)}")
                 else:
                     print("Invalid position. Please enter a number between 0 and 1023.")
 

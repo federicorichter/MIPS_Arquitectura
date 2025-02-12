@@ -31,7 +31,7 @@ module data_memory #(
     always @(negedge clk) begin
         if (rst) begin
             read_data_reg <= 32'b0;
-        end else if (i_mem_read) begin
+        end else if (i_mem_read && ~i_stall) begin
             // Leer 32 bits (4 bytes) desde la memoria con enmascaramiento
             case ({i_mask_1, i_mask_2})
                 2'b00: read_data_reg <= {mem[addr+3], mem[addr+2], mem[addr+1], mem[addr]}; // No enmascarar

@@ -916,7 +916,6 @@ end
         endcase
     end
 
-    assign o_debug_clk = (o_mode || i_pc >= stop_pc + 5) ? step_clk : i_clk;
     // Asignar la señal de reloj de depuración. Si el modo de depuración está activo o el PC es mayor o igual que el valor de parada del PC más 5, usar el reloj de paso; de lo contrario, usar el reloj del sistema.
 
     assign uart_tx_start = uart_tx_start_reg;

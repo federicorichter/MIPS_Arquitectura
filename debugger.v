@@ -1,18 +1,18 @@
 module debugger #(
-    parameter SIZE = 32,                       // Ancho de datos
-    parameter NUM_REGISTERS = 32,              // Número de registros
-    parameter SIZE_REG_DIR = $clog2(NUM_REGISTERS), // Ancho de la dirección del registro
-    parameter SIZE_OP = 6,                       // Tamaño del código de operación
-    parameter MEM_SIZE = 64,                     // Tamaño de la memoria en bytes
-    parameter ADDR_WIDTH = $clog2(MEM_SIZE),     // Ancho de la dirección para la memoria
-    parameter IF_ID_SIZE = 64,                   // Tamaño del registro de la pipeline IF/ID
-    parameter ID_EX_SIZE = 129,                  // Tamaño del registro de la pipeline ID/EX
-    parameter EX_MEM_SIZE = 77,                  // Tamaño del registro de la pipeline EX/MEM
-    parameter MEM_WB_SIZE = 71,                  // Tamaño del registro de la pipeline MEM/WB
+    parameter SIZE = 32,                       // Ancho de datos (bits)
+    parameter NUM_REGISTERS = 32,              // Número de registros en el procesador
+    parameter SIZE_REG_DIR = $clog2(NUM_REGISTERS), // Ancho de la dirección del registro (bits)
+    parameter SIZE_OP = 6,                       // Tamaño del código de operación (opcode) en bits
+    parameter MEM_SIZE = 64,                     // Tamaño de la memoria de datos en bytes
+    parameter ADDR_WIDTH = $clog2(MEM_SIZE),     // Ancho de la dirección para la memoria de datos (bits)
+    parameter IF_ID_SIZE = 64,                   // Tamaño del registro de la pipeline IF/ID (bits)
+    parameter ID_EX_SIZE = 129,                  // Tamaño del registro de la pipeline ID/EX (bits)
+    parameter EX_MEM_SIZE = 77,                  // Tamaño del registro de la pipeline EX/MEM (bits)
+    parameter MEM_WB_SIZE = 71,                  // Tamaño del registro de la pipeline MEM/WB (bits)
     parameter STEP_CYCLES = 3                    // Número de ciclos de reloj por paso en modo paso a paso
 )(
     input wire i_clk,                           // Reloj del sistema
-    input wire i_reset,                         // Señal de reset
+    input wire i_reset,                         // Señal de reset asíncrono
     input wire i_uart_rx,                       // Datos de recepción UART
     output wire o_uart_tx,                      // Datos de transmisión UART
     input wire [(SIZE*NUM_REGISTERS)-1:0] i_registers_debug, // Valores de los registros para depuración
@@ -25,23 +25,23 @@ module debugger #(
     input wire [SIZE*MEM_SIZE-1:0] i_debug_instructions, // Contenido de la memoria de instrucciones para depuración
     output wire o_mode,                          // Modo de depuración: 0 = continuo, 1 = paso a paso
     output reg [ADDR_WIDTH-1:0] o_debug_addr,   // Dirección para la depuración de la memoria de datos
-    output reg [ADDR_WIDTH-1:0] o_write_addr_reg, // Dirección para la escritura de la memoria de instrucciones
-    output reg o_inst_write_enable_reg,         // Señal de habilitación para la escritura de la memoria de instrucciones
-    output reg [SIZE-1:0] o_write_data_reg,      // Datos para la escritura de la memoria de instrucciones
+    output reg [ADDR_WIDTH-1:0] o_write_addr_reg, // Dirección para la escritura de la memoria de instrucciones (salida registrada)
+    output reg o_inst_write_enable_reg,         // Señal de habilitación para la escritura de la memoria de instrucciones (salida registrada)
+    output reg [SIZE-1:0] o_write_data_reg,      // Datos para la escritura de la memoria de instrucciones (salida registrada)
     output wire uart_tx_start,                  // Señal de inicio de transmisión UART
     output wire uart_tx_full,                   // Señal de transmisión UART completa
     output reg o_clk_mem_read,                  // Habilitación de reloj para la lectura de la memoria de datos
     output reg [5:0] state_out,                 // Estado actual de la máquina de estados del depurador
     output reg [7:0] uart_rx_data_out,          // Datos UART recibidos
-    output reg [4:0] instruction_counter_out,   // Contador de instrucciones de salida
-    output reg [4:0] instruction_count_out,     // Conteo de instrucciones de salida
-    output reg [2:0] byte_counter_out,          // Contador de bytes de salida
+    output reg [4:0] instruction_counter_out,   // Contador de instrucciones de salida (bits menos significativos)
+    output reg [4:0] instruction_count_out,     // Conteo de instrucciones de salida (bits menos significativos)
+    output reg [2:0] byte_counter_out,          // Contador de bytes de salida (bits menos significativos)
     output reg uart_rx_done_reg_out,            // Flag de finalización de recepción UART de salida
     output reg [4:0] i_pc_out,
     output reg o_prog_reset                     // Salida para la señal de reset del programa
 );
 
-    // Señales UART
+    // Señales UART internas
     reg uart_tx_start_reg = 0;                // Registro de inicio de transmisión UART
     reg uart_rx_done_reg;                     // Registro de finalización de recepción UART
     reg original_mode;                        // Almacena el modo original antes de la escritura
@@ -53,12 +53,12 @@ module debugger #(
     reg [135:0] padded_id_ex;
     reg [79:0] padded_ex_mem;
     reg [71:0] padded_mem_wb;
-    reg [31:0] instruction_count = 0;         // Número de instrucciones a recibir
-    reg [31:0] instruction_counter = 0;         // Contador para las instrucciones recibidas
-    integer byte_counter = 1;                   // Contador para los bytes recibidos
-    wire [7:0] uart_rx_data;                   // Datos UART recibidos
-    wire [7:0] uart_tx_data;                   // Datos UART a transmitir
-    wire uart_rx_done;                        // Señal de finalización de recepción UART
+    reg [31:0] instruction_count = 0;         // Número total de instrucciones a recibir
+    reg [31:0] instruction_counter = 0;         // Contador de instrucciones recibidas actualmente
+    integer byte_counter = 1;                   // Contador para los bytes recibidos de una instrucción (1-4)
+    wire [7:0] uart_rx_data;                   // Datos UART recibidos desde el módulo uart_rx
+    wire [7:0] uart_tx_data;                   // Datos UART a transmitir al módulo uart_tx
+    wire uart_rx_done;                        // Señal de finalización de recepción UART desde el módulo uart_rx
     reg [IF_ID_SIZE-1:0] i_IF_ID_REG;
     reg send_idle_ack_flag;
     reg [ADDR_WIDTH-1:0] o_write_addr = 0;       // Dirección para la escritura de la memoria de instrucciones
@@ -69,8 +69,8 @@ module debugger #(
     reg [31:0] step_counter;
     reg step_active;
 
-    // Estados de la máquina de estados
-    localparam IDLE = 0;                           // Estado inicial
+    // Definición de los estados de la máquina de estados principal
+    localparam IDLE = 0;                           // Estado inicial: Esperando comandos
     localparam SEND_REGISTERS = 1;                  // Enviar valores de los registros
     localparam SEND_IF_ID = 2;                     // Enviar registro IF/ID
     localparam SEND_ID_EX = 3;                     // Enviar registro ID/EX
@@ -150,7 +150,7 @@ module debugger #(
     reg next_prog_reset;
     reg [3:0] next_reset_counter;
     reg o_mode_reg = 0;                        // Modo de depuración
-    // Módulos UART
+    // Instanciación de los módulos UART
     wire tick;                                  // Tick de reloj para UART
     baudrate_generator #(
         .COUNT(261)                             // Conteo del generador de velocidad de baudios
@@ -187,36 +187,44 @@ module debugger #(
         .started()
     );
 
+    // Bloque always para asignar las salidas registradas
     always @(*) begin
         o_write_addr_reg = o_write_addr;
         o_inst_write_enable_reg = o_inst_write_enable;
         o_write_data_reg = o_write_data;
     end
 
+    // Máquina de estados para la recepción UART
     reg [1:0] rx_state;
     localparam RX_IDLE = 0;
     localparam RX_RECEIVING = 1;
     localparam RX_DONE = 2;
 
+    // Lógica para la recepción de datos UART
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
+            // Inicialización en el reset
             rx_state <= RX_IDLE;
             uart_rx_done_reg <= 0;
             uart_rx_data_reg <= 0;
         end else begin
             case (rx_state)
                 RX_IDLE: begin
+                    // Esperando la recepción de un nuevo byte
                     if (uart_rx_done) begin
+                        // Si un byte ha sido recibido
                         rx_state <= RX_RECEIVING;
                         uart_rx_data_reg <= uart_rx_data;
                         uart_rx_done_reg <= 1;
                     end
                 end
                 RX_RECEIVING: begin
+                    // Byte recibido, esperando para procesarlo
                     uart_rx_done_reg <= 0;
                     rx_state <= RX_DONE;
                 end
                 RX_DONE: begin
+                    // Byte procesado, volviendo a IDLE
                     if (!uart_rx_done) begin
                         rx_state <= RX_IDLE;
                     end
@@ -228,6 +236,7 @@ module debugger #(
     // Actualizar contadores y dirección de escritura
     always @(posedge i_clk or posedge i_reset) begin
         if (i_reset) begin
+            // Inicialización en el reset
             send_registers_counter <= 0;
             send_if_id_counter <= 0;
             send_id_ex_counter <= 0;
@@ -238,6 +247,7 @@ module debugger #(
             send_debug_instructions_counter <= 0;
             o_write_addr <= 0;
         end else begin
+            // Actualización de los contadores y la dirección
             send_registers_counter <= next_send_registers_counter;
             send_if_id_counter <= next_send_if_id_counter;
             send_id_ex_counter <= next_send_id_ex_counter;
@@ -249,7 +259,7 @@ module debugger #(
             send_debug_instructions_counter <= next_send_debug_instructions_counter;
             o_write_addr <= next_write_addr;
             byte_counter <= next_byte_counter;
-            byte_counter_out <= byte_counter[2:0]; // Cargar los 5 bits menos significativos
+            byte_counter_out <= byte_counter[2:0]; // Cargar los 3 bits menos significativos
             instruction_count_out <= instruction_count[4:0]; // Cargar los 5 bits menos significativos
             instruction_counter_out <= instruction_counter[4:0]; // Cargar los 5 bits menos significativos
         end
@@ -259,26 +269,29 @@ assign o_mode = o_mode_reg;
 
 reg next_mode;
 
-// En el bloque always de la máquina de estados principal:
+// Máquina de estados principal
 always @(posedge i_clk or posedge i_reset) begin
     if (i_reset) begin
+        // Inicialización en el reset
         state <= IDLE;
         state_out <= IDLE;
         reset_counter <= 0;
         reset_active <= 0;
         o_prog_reset <= 0;
-        o_mode_reg <= 0;  // Añadir inicialización de o_mode_reg
+        o_mode_reg <= 0;  // Inicializar el modo de depuración
     end else begin
+        // Actualización del estado y las señales
         state <= next_state;
         state_out <= state;
         reset_counter <= next_reset_counter;
         o_prog_reset <= next_prog_reset;
-        o_mode_reg <= next_mode;  // Actualizar o_mode_reg
+        o_mode_reg <= next_mode;  // Actualizar el modo de depuración
     end
 end
 
     // Lógica del siguiente estado
     always @(*) begin
+        // Asignaciones por defecto
         next_state = state;                       // Por defecto: permanecer en el mismo estado
         next_send_registers_counter = send_registers_counter;
         next_send_if_id_counter = send_if_id_counter;
@@ -299,6 +312,7 @@ end
 
         case (state)
             IDLE: begin
+                // Estado inicial: Esperando comandos
                 uart_tx_start_reg = 0;            // Asegurarse de que TX no esté activo
                 next_send_registers_counter = 0;  // Resetear contadores
                 next_send_if_id_counter = 0;
@@ -322,6 +336,7 @@ end
                 o_debug_addr = 0;
                 if (uart_rx_done_reg) begin       // Si se reciben datos
                     case (uart_rx_data_reg)
+                        // Comandos recibidos a través de UART
                         8'h01: next_state = WAIT_RX_DONE_DOWN_SEND_REGISTERS; // Enviar registros
                         8'h02: next_state = WAIT_RX_DONE_DOWN_SEND_IF_ID; // Enviar IF/ID
                         8'h03: next_state = WAIT_RX_DONE_DOWN_SEND_ID_EX; // Enviar ID/EX
@@ -358,12 +373,14 @@ end
             end
 
             SEND_IDLE_ACK: begin
+                // Enviar ACK de IDLE ('R')
                 uart_tx_data_reg = "R";           // ASCII para 'R'
                 uart_tx_start_reg = 1;            // Iniciar transmisión
                 next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
             end
 
             WAIT_UART_TX_FULL_DOWN_IDLE_ACK: begin
+                // Esperar a que la transmisión del ACK de IDLE se complete
                 if (uart_tx_full) begin           // Si la transmisión está completa
                     uart_tx_start_reg = 0;        // Detener transmisión
                     next_state = WAIT_TX_DOWN_IDLE_ACK;
@@ -371,6 +388,7 @@ end
             end
 
             WAIT_TX_DOWN_IDLE_ACK: begin
+                // Esperar a que la señal uart_tx_full se desactive
                 if (!uart_tx_full) begin          // Si la transmisión no está activa
                     next_state = IDLE;            // Volver a IDLE
                 end
@@ -385,11 +403,14 @@ end
             end
 
             SEND_REGISTERS: begin
+                // Enviar los valores de los registros
                 if (send_registers_counter < 1024) begin
+                    // Si aún no se han enviado todos los registros
                     uart_tx_data_reg = i_registers_debug[send_registers_counter +: 8];
                     uart_tx_start_reg = 1;
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_REGISTERS;
                 end else begin
+                    // Si ya se han enviado todos los registros
                     uart_tx_start_reg = 1;
                     uart_tx_data_reg = "R"; // Enviar R inmediatamente después de los datos
                     next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
@@ -397,6 +418,7 @@ end
             end
 
             WAIT_UART_TX_FULL_DOWN_SEND_REGISTERS: begin
+                // Esperar a que la transmisión de un byte de los registros se complete
                 if (uart_tx_full) begin
                     next_send_registers_counter = send_registers_counter + 8;
                     next_state = SEND_REGISTERS;
@@ -406,12 +428,15 @@ end
             end
             
             SEND_IF_ID: begin
+                // Enviar el registro IF/ID
                 padded_if_id = i_IF_ID;
                 if (send_if_id_counter < IF_ID_SIZE) begin
+                    // Si aún no se ha enviado todo el registro IF/ID
                     uart_tx_data_reg = padded_if_id[send_if_id_counter +: 8];
                     uart_tx_start_reg = 1;
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_IF_ID;
                 end else begin
+                    // Si ya se ha enviado todo el registro IF/ID
                     uart_tx_start_reg = 1;
                     uart_tx_data_reg = "R";
                     next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
@@ -419,6 +444,7 @@ end
             end
 
             WAIT_UART_TX_FULL_DOWN_SEND_IF_ID: begin
+                // Esperar a que la transmisión de un byte del registro IF/ID se complete
                 if (uart_tx_full) begin
                     next_send_if_id_counter = send_if_id_counter + 8;
                     next_state = SEND_IF_ID;
@@ -428,128 +454,217 @@ end
             end
 
             SEND_DEBUG_INSTRUCTIONS: begin
+                // Enviar las instrucciones de depuración
                 if (send_debug_instructions_counter < SIZE*MEM_SIZE) begin
+                    // Si aún no se han enviado todas las instrucciones
                     uart_tx_data_reg = i_debug_instructions[send_debug_instructions_counter +: 8];
+                    // Cargar el byte actual de las instrucciones de depuración en el registro de datos de transmisión UART
                     uart_tx_start_reg = 1;
+                    // Iniciar la transmisión UART
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_DEBUG_INSTRUCTIONS;
+                    // Pasar al estado de espera para que la transmisión UART se complete
                 end else begin
+                    // Si ya se han enviado todas las instrucciones
                     uart_tx_start_reg = 1;
+                    // Iniciar la transmisión UART
                     uart_tx_data_reg = "R"; // Enviar R inmediatamente después de los datos
+                    // Cargar el carácter 'R' en el registro de datos de transmisión UART para indicar el final de la transmisión
                     next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+                    // Pasar al estado de espera para que la transmisión UART se complete y enviar el ACK
                 end
             end
             
             WAIT_UART_TX_FULL_DOWN_SEND_DEBUG_INSTRUCTIONS: begin
+                // Estado de espera para que la transmisión UART de las instrucciones de depuración se complete
                 if (uart_tx_full) begin
+                    // Si la transmisión UART se ha completado
                     next_send_debug_instructions_counter = send_debug_instructions_counter + 8;
+                    // Incrementar el contador de instrucciones de depuración para enviar el siguiente byte
                     next_state = SEND_DEBUG_INSTRUCTIONS;
+                    // Volver al estado SEND_DEBUG_INSTRUCTIONS para enviar el siguiente byte
                 end else begin
+                    // Si la transmisión UART aún no se ha completado
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_DEBUG_INSTRUCTIONS;
+                    // Permanecer en este estado hasta que la transmisión se complete
                 end
             end
             
             SEND_ID_EX: begin
+                // Estado para enviar el registro ID/EX a través de UART
                 padded_id_ex = {7'b0, i_ID_EX};
+                // Rellenar el registro ID/EX con 7 bits en cero para ajustarlo al tamaño de 8 bits para la transmisión UART
                 if (send_id_ex_counter < 136) begin
+                    // Si aún no se han enviado todos los bytes del registro ID/EX
                     uart_tx_data_reg = padded_id_ex[send_id_ex_counter +: 8];
+                    // Cargar el byte actual del registro ID/EX en el registro de datos de transmisión UART
                     uart_tx_start_reg = 1;
+                    // Iniciar la transmisión UART
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_ID_EX;
+                    // Pasar al estado de espera para que la transmisión UART se complete
                 end else begin
+                    // Si ya se han enviado todos los bytes del registro ID/EX
                     uart_tx_start_reg = 1;
+                    // Iniciar la transmisión UART
                     uart_tx_data_reg = "R";
+                    // Cargar el carácter 'R' en el registro de datos de transmisión UART para indicar el final de la transmisión
                     next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+                    // Pasar al estado de espera para que la transmisión UART se complete y enviar el ACK
                 end
             end
 
             WAIT_UART_TX_FULL_DOWN_SEND_ID_EX: begin
+                // Estado de espera para que la transmisión UART del registro ID/EX se complete
                 if (uart_tx_full) begin
+                    // Si la transmisión UART se ha completado
                     next_send_id_ex_counter = send_id_ex_counter + 8;
+                    // Incrementar el contador del registro ID/EX para enviar el siguiente byte
                     next_state = SEND_ID_EX;
+                    // Volver al estado SEND_ID_EX para enviar el siguiente byte
                 end else begin
+                    // Si la transmisión UART aún no se ha completado
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_ID_EX;
+                    // Permanecer en este estado hasta que la transmisión se complete
                 end
             end
             
             SEND_EX_MEM: begin
+                // Estado para enviar el registro EX/MEM a través de UART
                 padded_ex_mem = {3'b0, i_EX_MEM};
+                // Rellenar el registro EX/MEM con 3 bits en cero para ajustarlo al tamaño de 8 bits para la transmisión UART
                 if (send_ex_mem_counter < 80) begin
+                    // Si aún no se han enviado todos los bytes del registro EX/MEM
                     uart_tx_data_reg = padded_ex_mem[send_ex_mem_counter +: 8];
+                    // Cargar el byte actual del registro EX/MEM en el registro de datos de transmisión UART
                     uart_tx_start_reg = 1;
+                    // Iniciar la transmisión UART
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM;
+                    // Pasar al estado de espera para que la transmisión UART se complete
                 end else begin
+                    // Si ya se han enviado todos los bytes del registro EX/MEM
                     uart_tx_start_reg = 1;
+                    // Iniciar la transmisión UART
                     uart_tx_data_reg = "R";
+                    // Cargar el carácter 'R' en el registro de datos de transmisión UART para indicar el final de la transmisión
                     next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+                    // Pasar al estado de espera para que la transmisión UART se complete y enviar el ACK
                 end
             end
 
             WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM: begin
+                // Estado de espera para que la transmisión UART del registro EX/MEM se complete
                 if (uart_tx_full) begin
+                    // Si la transmisión UART se ha completado
                     next_send_ex_mem_counter = send_ex_mem_counter + 8;
+                    // Incrementar el contador del registro EX/MEM para enviar el siguiente byte
                     next_state = SEND_EX_MEM;
+                    // Volver al estado SEND_EX_MEM para enviar el siguiente byte
                 end else begin
+                    // Si la transmisión UART aún no se ha completado
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_EX_MEM;
+                    // Permanecer en este estado hasta que la transmisión se complete
                 end
             end
             
 
             SEND_MEM_WB: begin
+                // Estado para enviar el registro MEM/WB a través de UART
                 padded_mem_wb = {1'b0, i_MEM_WB};
+                // Rellenar el registro MEM/WB con 1 bit en cero para ajustarlo al tamaño de 8 bits para la transmisión UART
                 if (send_mem_wb_counter < 72) begin
+                    // Si aún no se han enviado todos los bytes del registro MEM/WB
                     uart_tx_data_reg = padded_mem_wb[send_mem_wb_counter +: 8];
+                    // Cargar el byte actual del registro MEM/WB en el registro de datos de transmisión UART
                     uart_tx_start_reg = 1;
+                    // Iniciar la transmisión UART
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB;
+                    // Pasar al estado de espera para que la transmisión UART se complete
                 end else begin
+                    // Si ya se han enviado todos los bytes del registro MEM/WB
                     uart_tx_start_reg = 1;
+                    // Iniciar la transmisión UART
                     uart_tx_data_reg = "R";
+                    // Cargar el carácter 'R' en el registro de datos de transmisión UART para indicar el final de la transmisión
                     next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+                    // Pasar al estado de espera para que la transmisión UART se complete y enviar el ACK
                 end
             end
 
             WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB: begin
+                // Estado de espera para que la transmisión UART del registro MEM/WB se complete
                 if (uart_tx_full) begin
+                    // Si la transmisión UART se ha completado
                     next_send_mem_wb_counter = send_mem_wb_counter + 8;
+                    // Incrementar el contador del registro MEM/WB para enviar el siguiente byte
                     next_state = SEND_MEM_WB;
+                    // Volver al estado SEND_MEM_WB para enviar el siguiente byte
                 end else begin
+                    // Si la transmisión UART aún no se ha completado
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEM_WB;
+                    // Permanecer en este estado hasta que la transmisión se complete
                 end
             end
 
             SEND_MEMORY: begin
+                // Estado para enviar la memoria de datos a través de UART
                 o_clk_mem_read = 0;
+                // Deshabilitar la lectura de la memoria de datos
                 if (send_memory_counter < 32) begin
+                    // Si aún no se han enviado todos los bytes de la memoria de datos
                     uart_tx_data_reg = i_debug_data[send_memory_counter +: 8];
+                    // Cargar el byte actual de la memoria de datos en el registro de datos de transmisión UART
                     uart_tx_start_reg = 1;
+                    // Iniciar la transmisión UART
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY;
+                    // Pasar al estado de espera para que la transmisión UART se complete
                 end else begin
+                    // Si ya se han enviado todos los bytes de la memoria de datos
                     uart_tx_start_reg = 1;
+                    // Iniciar la transmisión UART
                     uart_tx_data_reg = "R";
+                    // Cargar el carácter 'R' en el registro de datos de transmisión UART para indicar el final de la transmisión
                     next_state = WAIT_UART_TX_FULL_DOWN_IDLE_ACK;
+                    // Pasar al estado de espera para que la transmisión UART se complete y enviar el ACK
                 end
             end
 
             WAIT_UART_TX_FULL_DOWN_SEND_MEMORY: begin
+                // Estado de espera para que la transmisión UART de la memoria de datos se complete
                 if (uart_tx_full) begin
+                    // Si la transmisión UART se ha completado
                     next_send_memory_counter = send_memory_counter + 8;
+                    // Incrementar el contador de la memoria de datos para enviar el siguiente byte
                     next_state = SEND_MEMORY;
+                    // Volver al estado SEND_MEMORY para enviar el siguiente byte
                 end else begin
+                    // Si la transmisión UART aún no se ha completado
                     next_state = WAIT_UART_TX_FULL_DOWN_SEND_MEMORY;
+                    // Permanecer en este estado hasta que la transmisión se complete
                 end
             end
 
             RECEIVE_INSTRUCTION_COUNT: begin
+                // Estado para recibir la cantidad de instrucciones a cargar en la memoria
                 if (uart_rx_done_reg) begin
+                    // Si la recepción UART ha terminado
                     next_instruction_count = uart_rx_data_reg; // Recibir la cantidad de instrucciones
+                    // Almacenar la cantidad de instrucciones recibidas en el registro next_instruction_count
                     done_inst_write = 0;
+                    // Reiniciar el flag de escritura de instrucciones completada
                     next_state = WAIT_RX_DONE_DOWN_LOAD_PROGRAM;
+                    // Pasar al estado de espera para que la recepción UART se complete antes de cargar el programa
                 end
             end
             
             WAIT_RX_DONE_DOWN_RECEIVE_INSTRUCTION_COUNT: begin
+                // Estado de espera para que la recepción UART se complete antes de recibir la cantidad de instrucciones
                 if (!uart_rx_done_reg) begin
+                    // Si la recepción UART no está en curso
                     next_state = RECEIVE_INSTRUCTION_COUNT;
+                    // Volver al estado RECEIVE_INSTRUCTION_COUNT para recibir la cantidad de instrucciones
                 end else begin
+                    // Si la recepción UART está en curso
                     next_state = WAIT_RX_DONE_DOWN_RECEIVE_INSTRUCTION_COUNT;
+                    // Permanecer en este estado hasta que la recepción se complete
                 end
             end
 // Modificación en el estado LOAD_PROGRAM dentro del always @(*) begin
@@ -768,14 +883,20 @@ end
 
             // Modificar el estado STEP_CLOCK:
             STEP_CLOCK: begin
+                // Estado para ejecutar un solo ciclo de reloj en modo paso a paso.
                 next_mode = 0;  // Desactivar modo paso a paso por un ciclo
+                // Desactivar temporalmente el modo paso a paso.
                 next_state = WAIT_STEP;  // Ir a estado de espera para restaurar el modo
+                // Pasar al estado de espera para restaurar el modo paso a paso.
             end
             
             // Añadir estado WAIT_STEP:
             WAIT_STEP: begin
+                // Estado de espera para restaurar el modo paso a paso después de un ciclo.
                 next_mode = 1;  // Restaurar modo paso a paso
+                // Restaurar el modo paso a paso.
                 next_state = IDLE;
+                // Volver al estado IDLE.
             end
 
             WAIT_RX_DOWN_STOP_PC: begin

@@ -192,3 +192,8 @@ Algunos de los comandos más relevantes:
 Puedes ver el diagrama de estados del depurador a continuación:
 
 ![Diagrama de Estados del Depurador](scripts/Debugger_State_Diagram.svg)
+
+
+## Diagrama de bloques del MIPS
+
+![Diagrama de bloques del MIPS](scripts/Block_diagram.svg)

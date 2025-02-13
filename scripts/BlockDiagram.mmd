@@ -1,0 +1,173 @@
+---
+config:
+    layout: elk
+---
+flowchart LR
+  %% ===================== Estilos =====================
+  classDef stage fill:#cccccc,stroke:#666,stroke-width:2px,fill-opacity:0.3;
+  classDef latch fill:#ffcccc,stroke:#000,stroke-width:2px,fill-opacity:0.3;
+  classDef debugger fill:#000000,stroke:#000,stroke-width:2px,fill-opacity:0.3,color:#ffffff;
+  classDef module fill:#000000,stroke:#000,stroke-width:2px,color:#ffffff;
+  
+  %% ===================== TECHO: Debugger ===================== 
+  subgraph TECHO["Debugger (Techo)"]
+    direction LR
+    DBG[Debugger Module]
+  end
+  
+  %% ===================== IF Stage =====================
+  subgraph IF [IF Stage]
+    direction TB
+    IF_A[Instruction Fetch]
+    IF_B[PC Adder]
+  end
+  class IF stage;
+  class IF_A,IF_B module;
+  
+  %% ===================== IF/ID Latch =====================
+  subgraph IFID [IF/ID Latch]
+    direction TB
+    L1[Latch: Instruction]
+    L1b[Latch: PC+4]
+  end
+  class IFID latch;
+  
+  %% ===================== ID Stage =====================
+  subgraph ID [ID Stage]
+    direction TB
+    ID_A[Instruction Decode]
+    ID_B[Control Unit]
+    ID_C[Hazard Detection]
+    ID_E[Mux_dir]
+    ID_F[Mux_eq_neq]
+    ID_G[Mux_pc_immediate]
+    ID_D[Mux_jmp_brch]
+    ID_H[Adder PC Immediate]
+  end
+  class ID stage;
+  class ID_A,ID_B,ID_C,ID_D,ID_E,ID_F,ID_G,ID_H module;
+  
+  %% ===================== ID/EX Latch =====================
+  subgraph IDEX [ID/EX Latch]
+    direction TB
+    L2[Latch: ID/EX Data]
+  end
+  class IDEX latch;
+  
+  %% ===================== EX Stage =====================
+  subgraph EX [EX Stage]
+    direction TB
+    EX_A[Execution Unit]
+  end
+  class EX stage;
+  class EX_A module;
+  
+  %% ===================== EX/MEM Latch =====================
+  subgraph EXMEM [EX/MEM Latch]
+    direction TB
+    L3[Latch: EX/MEM Data]
+  end
+  class EXMEM latch;
+  
+  %% ===================== MEM Stage =====================
+  subgraph MEM [MEM Stage]
+    direction TB
+    MEM_A[Data Memory]
+  end
+  class MEM stage;
+  class MEM_A module;
+  
+  %% ===================== MEM/WB Latch =====================
+  subgraph MEMWB [MEM/WB Latch]
+    direction TB
+    L4[Latch: MEM/WB Data]
+  end
+  class MEMWB latch;
+  
+  %% ===================== WB Stage =====================
+  subgraph WB [WB Stage]
+    direction TB
+    WB_A[Write Back Unit]
+    WB_B[Mux Return/Jump]
+  end
+  class WB stage;
+  class WB_A,WB_B module;
+  
+  %% ===================== CONEXIONES =====================
+  %% ---- Conexiones del Debugger (TECHO) ----
+  L1 --|if_to_id_reg|--> DBG
+  L2 --|id_to_ex_reg|--> DBG
+  L3 --|ex_to_mem_reg|--> DBG
+  L4 --|mem_to_wb_reg|--> DBG
+  IF_A --|pc_value|--> DBG
+  IF_A --|i_debug_instructions|--> DBG
+  ID_A --|i_registers_debug|--> DBG
+  MEM_A --|debug_data|--> DBG
+  DBG --|debug_addr|--> MEM_A
+  DBG --|i_inst_write_enable,<br>i_write_addr,<br>i_write_data|--> IF_A
+  DBG --|clk_mem_read,<br>reset_debug|--> IF_A
+  
+  %% ---- IF Stage ----
+  IF_A --|output: instruction|--> L1
+  IF_A --|output: pc_value|--> IF_B
+  IF_B --|output: pc_plus_4|--> L1b
+  %% Además, IF_A recibe:
+  ID_D --|output: pc_if|--> IF_A
+  
+  %% ---- IF/ID Latch -> ID Stage ----
+  L1 --|if_to_id[31:0]<br>(instruction)|--> ID_A
+  L1 --|if_to_id[5:0]<br>(func)|--> ID_B
+  L1 --|if_to_id[31:26]<br>(opcode)|--> ID_B
+  L1b --|if_to_id[63:32]|--> ID_H
+  
+  %% ---- Dentro de ID Stage ----
+  %% (Salida de Instruction Decode)
+  ID_A --|outputs: reg_a,<br>reg_b, immediate|--> L2
+  ID_A --|outputs: rs_dir,<br>rt_dir, rd_dir|--> L2
+  ID_A --|output: o_jmp_direc|--> ID_E
+  ID_A --|output: reg_a_conditional|--> ID_E
+  ID_A --|reg_a_conditional == reg_b_conditional|--> ID_F
+  %% (Control Unit)
+  ID_B --|output: control_signals|--> L2
+  ID_B --|control_signals[JUMP_B]|--> ID_D
+  ID_B --|control_signals[JUMP_SRC]|--> ID_E
+  ID_B --|control_signals[EQorNE]|--> ID_F
+  %% (Mux_dir)
+  ID_E --|output: o_mux_dir|--> ID_D
+  %% (Adder PC Immediate)
+  ID_A --|immediate << 2|--> ID_H
+  ID_H --|output: immediate_plus_pc|--> ID_G
+  %% (Mux_pc_immediate)
+  L1b --|PC+4|--> ID_G
+  ID_F --|output: res_branch|--> ID_G
+  %% (Mux_pc_immediate -> Mux_jmp_brch)
+  ID_G --|output: o_mux_pc_immed|--> ID_D
+  
+  %% (Hazard Detection)
+  ID_A --|rs_dir, rt_dir|--> ID_C
+  L2 --|id_to_ex[27:23], id_to_ex[14]|--> ID_C
+  ID_B --|control_signals[JUMP_B]|--> ID_C
+  ID_C -.->|outputs: if_flush,<br>hazard_output| IF_A
+  
+  %% ---- ID Stage -> ID/EX Latch ----
+  ID_A --|id_to_ex data:<br>rs_dir, reg_a, reg_b, immediate,<br>rt_dir, rd_dir,<br>control_signals (bits)|--> L2  
+  %% ---- ID/EX Latch -> EX Stage ----
+  L2 --|id_to_ex|--> EX_A
+  
+  %% ---- EX Stage -> EX/MEM Latch ----
+  EX_A --|outputs: reg_address,<br>reg_alu_res, reg_mem_data,<br>zero_alu|--> L3
+  
+  %% ---- EX/MEM Latch -> MEM Stage ----
+  L3 --|ex_to_mem|--> MEM_A
+  
+  %% ---- MEM Stage -> MEM/WB Latch ----
+  MEM_A --|outputs: mem_data,<br>alu_result, reg_dest|--> L4
+  
+  %% ---- MEM/WB Latch -> WB Stage ----
+  L4 --|mem_to_wb|--> WB_A
+  L4 --|mem_to_wb (reg bits)|--> WB_B
+  
+  %% ---- Dentro de WB Stage ----
+  WB_A --|output: data_write_reg|--> WB_B
+  WB_A --|data_write_reg|--> ID_A    
+  WB_B --|output: address_write_reg|--> ID_A

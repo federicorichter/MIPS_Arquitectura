@@ -28,6 +28,7 @@ La arquitectura MIPS implementada soporta 3 tipos de instrucciones: R, I y J.
     *   Función: Indicada en los 6 bits menos significativos.
     *   Formato: Especifica las posiciones de los registros fuente (s y t) y el registro destino en el 
     banco de registros.
+
 ![image](https://github.com/user-attachments/assets/aabd4949-8c5f-4e58-b97c-545dd905f0b1)
 
 *   **Tipo I:** Operaciones entre un registro y un inmediato.
@@ -35,11 +36,13 @@ La arquitectura MIPS implementada soporta 3 tipos de instrucciones: R, I y J.
     *   Operación: Se realiza sobre el inmediato (16 bits menos significativos) y el registro indicado en `rs`.
     *   Resultado: Almacenado en `rt`.
     *   LOAD y STORE: Calculan la dirección de acceso a memoria sumando el registro en `rs` y el inmediato.
+    
 ![image](https://github.com/user-attachments/assets/04be5045-e039-4907-9d87-09ec0eacd498)
 
 *   **Tipo J:** Saltos incondicionales.
     *   Posición de salto: Indicada en los bits menos significativos.
     *   Instrucciones: `J` y `JAL` (almacena la posición de retorno en el registro 31).
+      
 ![image](https://github.com/user-attachments/assets/0360e80e-f955-4d6f-85a8-bd19861c93f1)
 
 

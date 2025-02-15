@@ -73,7 +73,7 @@ module data_memory #(
         end
     end
 
-    always @(negedge clk2) begin
+    always @(negedge clk) begin
         // Leer 32 bits (4 bytes) desde la memoria para depuración
         if(i_clk_mem_read) begin
             debug_data_reg <= {mem[debug_addr+3], mem[debug_addr+2], mem[debug_addr+1], mem[debug_addr]};

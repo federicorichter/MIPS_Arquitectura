@@ -44,10 +44,10 @@ module mips #(
     localparam ALU_OP1 = 11; //Op1
     localparam ALU_OP2 = 12; //Op2
     localparam MEM_2_REG = 13; //MEM_ToREG
-    localparam J_RET_DST = 14;
-    localparam EQorNE = 15;
-    localparam JUMP_SRC = 16;
-    localparam JUMP_B = 17;
+    localparam J_RET_DST = 14;  // Selecciona registro para guardar el PC en JAL y JALR
+    localparam EQorNE = 15;  // Selector condicion para branch
+    localparam JUMP_SRC = 16; // Selector para dirección de PC en salto
+    localparam JUMP_B = 17; // 1 para instrucciones de salto incondicional
 
 
 
@@ -184,7 +184,6 @@ module mips #(
         .i_rst(i_rst),
         .i_stall(i_stall || o_writing_instruction_mem || hazard_output || o_mode), // Bloquear el pipeline mientras se escribe la memoria de instrucciones
         .i_pc(pc_if),
-        //.i_mux_selec(pc_source), // selector del mux
         .o_instruction(instruction), // salida:instruccion
         .o_pc(pc_value), // salida: contador de programa
         .i_inst_write_enable(i_inst_write_enable), // habilitación de escritura
@@ -208,7 +207,6 @@ module mips #(
         .rst(i_rst || reset_debug ), //|| aux_flush || aux_flush_pos),
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem && ~o_mode),
         .i_data({
-            //pc_plus,//PC + 4
             instruction_input //PC
          
         }),
@@ -224,7 +222,6 @@ module mips #(
         .i_enable(~i_stall && ~hazard_output && ~o_writing_instruction_mem && ~o_mode),
         .i_data({
             pc_plus_4//PC + 4
-            //instruction //PC
          
         }),
         .o_data(if_to_id[63:32])
@@ -318,8 +315,6 @@ module mips #(
         .i_reg_wr_mem_wb(mem_to_wb[1]),
         .i_rs_ex(id_to_ex[128:124]),
         .i_rt_ex(id_to_ex[27:23]),
-        //.o_mux_a(mux_a_ex),
-        //.o_mux_b(mux_b_ex),
         .o_reg_A_branch(reg_a_conditional),
         .o_reg_B_branch(reg_b_conditional),
         .o_reg_A(reg_a),
@@ -376,10 +371,6 @@ module mips #(
         .i_sign_ext(id_to_ex[59:28]),
         .i_rt_add(id_to_ex[27:23]),
         .i_rd_add(id_to_ex[22:18]),
-        //.i_data_ex(ex_to_mem[68:37]),
-        //.i_data_mem(data_write_reg),
-        //.i_mux_A(mux_a_ex),
-        //.i_mux_B(mux_b_ex),
         .o_reg_add(reg_address),
         .o_alu_res(reg_alu_res),
         .o_mem_data(reg_mem_data),
@@ -414,7 +405,6 @@ module mips #(
         .MEM_SIZE(MEM_SIZE)
     ) MEM (
         .clk(i_clk),
-        .clk2(i_clk),
         .i_stall(o_mode),
         .rst(i_rst || reset_debug),
         .i_mem_write(ex_to_mem[71]),
@@ -466,7 +456,6 @@ module mips #(
         .i_data({5'b11111,mem_to_wb[6:2]}),
         .o_data(address_write_reg)
     );
-
-    //assign address_write_reg = (ex_to_mem[75] == 1 ? mem_to_wb[6:2] : 5'b0 );
+    
 
 endmodule

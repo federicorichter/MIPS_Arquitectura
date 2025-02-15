@@ -55,13 +55,13 @@ module instruction_decode #(
     wire [1:0] i_mux_A, i_mux_B;
     wire [SIZE-1:0] reg_a, reg_b, reg_a_value;
 
-
+    // Unidad de Forwarding para riesgo de datos
     forwarding_unit #(
         .TAM_BITS_FORWARD(2),
         .TAM_DIREC_REG(5)
     ) forwarding_unit (
-        .i_rs_if_id(i_instruction[25:21]),
-        .i_rt_if_id(i_instruction[20:16]),
+        .i_rs_if_id(i_instruction[25:21]), // Registro fuente 
+        .i_rt_if_id(i_instruction[20:16]), // Registro fuente
         .i_rd_ex_mem(i_rd_ex_mem),
         .i_rd_id_ex(i_rd_id_ex),
         .i_rd_mem_wb(i_rd_mem_wb),
@@ -81,6 +81,7 @@ module instruction_decode #(
         o_reg_A
     );
 
+    // Selecciona origen del operando A
     mux #(
         .BITS_ENABLES(2),
         .BUS_SIZE(SIZE)
@@ -90,6 +91,7 @@ module instruction_decode #(
         .o_data(reg_a_value)
     );
 
+    // Selecciona origen del operando B
     mux #(
         .BITS_ENABLES(2),
         .BUS_SIZE(SIZE)

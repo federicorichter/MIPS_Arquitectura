@@ -6,20 +6,17 @@ module execution#(
 )(  
     input wire clk,
     input wire i_shift_mux_a,
-    input wire i_src_alu_b,
+    input wire i_src_alu_b,  // Señal de control
     input wire i_reg_dst,
     input wire i_is_unsigned,
     input wire [ALU_OP_SIZE-1:0]i_alu_op,
     input wire [SIZE-1:0] i_data_a,
     input wire [SIZE-1:0] i_data_b,
-    input wire [SIZE-1:0] i_sign_ext,
+    input wire [SIZE-1:0] i_sign_ext, // Source para el shift
     input wire [ADDRESS_SIZE-1:0] i_rt_add,
     input wire [ADDRESS_SIZE-1:0] i_rd_add,
-    //input wire [SIZE-1:0] i_data_ex,
-    //input wire [SIZE-1:0] i_data_mem, 
-    //input wire [1:0] i_mux_A,
-    //input wire [1:0] i_mux_B,
-    output wire [ADDRESS_SIZE-1:0] o_reg_add,
+
+    output wire [ADDRESS_SIZE-1:0] o_reg_add, // Registro de destino
     output wire [SIZE-1:0] o_alu_res,
     output wire [SIZE-1:0] o_mem_data,
     output wire o_zero
@@ -38,26 +35,8 @@ module execution#(
         {i_rd_add,i_rt_add},
         o_reg_add
     );
-/*
-    mux #(
-        .BITS_ENABLES(2),
-        .BUS_SIZE(SIZE)
-    ) mux_A(
-        .i_en(i_mux_A),
-        .i_data({32'b0,i_data_ex,i_data_mem,i_data_a}),
-        .o_data(data_a)
-    );
 
-    mux #(
-        .BITS_ENABLES(2),
-        .BUS_SIZE(SIZE)
-    ) mux_B(
-        .i_en(i_mux_B),
-        .i_data({32'b0,i_data_ex,i_data_mem,i_data_b}),
-        .o_data(data_b)
-    );*/
-
-
+    // Selecciiona el origen del operando B, de los registros o de el extensor de signo
     mux #(
         .BITS_ENABLES(1),
         .BUS_SIZE(32)
@@ -68,6 +47,7 @@ module execution#(
         alu_b_data
     );
 
+    // Selecciona inputa para operaciones de shift
     mux #(
         .BITS_ENABLES(1),
         .BUS_SIZE(32)
@@ -78,6 +58,7 @@ module execution#(
         alu_a_data
     );
 
+    // Selecciona la operación a realizae por ALU con los operandos
      control_alu #(
         .SIZE(SIZE),
         .ALU_OP_SIZE(ALU_OP_SIZE),

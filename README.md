@@ -193,6 +193,8 @@ Puedes ver el diagrama de estados del depurador a continuación:
 
 ![image](https://github.com/user-attachments/assets/56c497ed-9682-42dc-9672-fc8338ee3702)
 
+Link Google Drive SVG: https://drive.google.com/file/d/1QCAa9kFoFwlr-5MrAj1FITfCE0ovDCWr/view?usp=sharing
+
 ## Analisis de timing:
 Se probo la frecuencia maxima a la que se puede ejecutar el sistema sin problemas de timing.
 

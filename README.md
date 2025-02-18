@@ -189,7 +189,7 @@ Algunos de los comandos más relevantes:
 
 Puedes ver el diagrama de estados del depurador a continuación:
 
-![image](https://github.com/user-attachments/assets/56c497ed-9682-42dc-9672-fc8338ee3702)
+![Diagrama de Estados del Depurador](scripts/Debugger_State_Diagram.svg)
 
 Link Google Drive SVG: https://drive.google.com/file/d/1QCAa9kFoFwlr-5MrAj1FITfCE0ovDCWr/view?usp=sharing
 
@@ -212,6 +212,6 @@ Concluimos que la frecuencia maxima a la que podemos hacer funcionar la implemen
 
 ## Diagrama de bloques del MIPS
 
-![image](https://github.com/user-attachments/assets/ebb25c3f-bbd5-4f15-80dc-36e83e09e6f5)
+![Diagrama de bloques del MIPS](scripts/Block_diagram.svg)
 
 Link Google Drive SVG: https://drive.google.com/file/d/12zH1TmU-y-AC7Wxa7y6nwYojT1YrmjtS/view?usp=sharing

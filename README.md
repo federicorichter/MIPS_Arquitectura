@@ -195,11 +195,12 @@ Puedes ver el diagrama de estados del depurador a continuación:
 
 ## Analisis de timing:
 Se probo la frecuencia maxima a la que se puede ejecutar el sistema sin problemas de timing.
+
+### 70Mhz
+![image](https://github.com/user-attachments/assets/2360cfd6-b675-446a-9705-da5912d95427)
+
 ### 40 Mhz:
 ![image](https://github.com/user-attachments/assets/c6390d10-d1cd-4892-afa9-e4d68e3c101b)
-
-### 50Mhz
-![image](https://github.com/user-attachments/assets/5c0c2c0b-28ea-4b11-a123-535c13f80c9a)
 
 
 ### 

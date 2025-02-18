@@ -193,6 +193,13 @@ Puedes ver el diagrama de estados del depurador a continuación:
 
 ![Diagrama de Estados del Depurador](scripts/Debugger_State_Diagram.svg)
 
+## Analisis de timing:
+Se probo la frecuencia maxima a la que se puede ejecutar el sistema sin problemas de timing.
+### 40 Mhz:
+![image](https://github.com/user-attachments/assets/c6390d10-d1cd-4892-afa9-e4d68e3c101b)
+
+### 
+
 
 ## Diagrama de bloques del MIPS
 

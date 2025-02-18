@@ -89,7 +89,6 @@ module mips #(
     wire uart_rx_done, uart_tx_start, uart_tx_full, uart_rx_empty;
     wire [7:0] uart_rx_data, uart_tx_data;
     wire baud_tick;
-    wire o_mode;
     wire clk_mem_read;
     wire hazard_output;
     wire [SIZE-1:0] reg_a_conditional, reg_b_conditional;

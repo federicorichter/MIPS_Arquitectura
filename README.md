@@ -1,5 +1,3 @@
-![image](https://github.com/user-attachments/assets/85435f88-5952-465f-97a0-3b5da38cbe96)# TP3 - MIPS
-
 ## Universidad Nacional de Córdoba
 ![image](https://github.com/user-attachments/assets/16ea052b-a425-4ebf-8b1b-adf87b052919)
 

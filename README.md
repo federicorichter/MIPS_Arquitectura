@@ -197,16 +197,16 @@ Puedes ver el diagrama de estados del depurador a continuación:
 Se probo la frecuencia maxima a la que se puede ejecutar el sistema sin problemas de timing.
 
 ### 70Mhz
-![image](https://github.com/user-attachments/assets/2360cfd6-b675-446a-9705-da5912d95427)
+- ![image](https://github.com/user-attachments/assets/2360cfd6-b675-446a-9705-da5912d95427)
 
 ### 60Mhz
-![image](https://github.com/user-attachments/assets/348c63c5-f27d-4e85-8504-a0b1adf983a1)
+- ![image](https://github.com/user-attachments/assets/348c63c5-f27d-4e85-8504-a0b1adf983a1)
 
 ### 55Mhz
-![image](https://github.com/user-attachments/assets/20582888-5e11-4028-b3ae-803737ef9006)
+- ![image](https://github.com/user-attachments/assets/20582888-5e11-4028-b3ae-803737ef9006)
 
 ### 40 Mhz:
-![image](https://github.com/user-attachments/assets/c6390d10-d1cd-4892-afa9-e4d68e3c101b)
+- ![image](https://github.com/user-attachments/assets/c6390d10-d1cd-4892-afa9-e4d68e3c101b)
 
 Concluimos que la frecuencia maxima a la que podemos hacer funcionar la implementacion es de 55 Mhz.
 

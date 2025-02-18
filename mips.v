@@ -130,7 +130,6 @@ module mips #(
         .i_debug_instructions(i_debug_instructions),
         .i_pc(pc_value),
         .o_mode(o_mode),
-        //.o_mode(o_mode),
         .o_debug_addr(debug_addr),
         .o_inst_write_enable_reg(i_inst_write_enable),
         .o_write_addr_reg(i_write_addr),
@@ -146,8 +145,6 @@ module mips #(
         .byte_counter_out(byte_counter_out),
         .uart_rx_done_reg_out(uart_rx_done_reg_out),
         .o_prog_reset(reset_debug)
-        //.i_pc_out(pc_out)
-        //.uart_rx_empty(uart_rx_empty)
     );
 
 

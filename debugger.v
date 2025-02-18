@@ -25,9 +25,9 @@ module debugger #(
     input wire [SIZE*MEM_SIZE-1:0] i_debug_instructions, // Contenido de la memoria de instrucciones para depuración
     output wire o_mode,                          // Modo de depuración: 0 = continuo, 1 = paso a paso
     output reg [ADDR_WIDTH-1:0] o_debug_addr,   // Dirección para la depuración de la memoria de datos
-    output reg [ADDR_WIDTH-1:0] o_write_addr_reg, // Dirección para la escritura de la memoria de instrucciones (salida registrada)
-    output reg o_inst_write_enable_reg,         // Señal de habilitación para la escritura de la memoria de instrucciones (salida registrada)
-    output reg [SIZE-1:0] o_write_data_reg,      // Datos para la escritura de la memoria de instrucciones (salida registrada)
+    output reg [ADDR_WIDTH-1:0] o_write_addr_reg, // Dirección para la escritura de la memoria de instrucciones 
+    output reg o_inst_write_enable_reg,         // Señal de habilitación para la escritura de la memoria de instrucciones 
+    output reg [SIZE-1:0] o_write_data_reg,      // Datos para la escritura de la memoria de instrucciones 
     output wire uart_tx_start,                  // Señal de inicio de transmisión UART
     output wire uart_tx_full,                   // Señal de transmisión UART completa
     output reg o_clk_mem_read,                  // Habilitación de reloj para la lectura de la memoria de datos
@@ -667,7 +667,7 @@ end
                     // Permanecer en este estado hasta que la recepción se complete
                 end
             end
-// Modificación en el estado LOAD_PROGRAM dentro del always @(*) begin
+
             LOAD_PROGRAM: begin
                 // Este bloque se ejecuta cuando la máquina de estados está en el estado LOAD_PROGRAM.
                 if (uart_rx_done_reg) begin

@@ -106,6 +106,21 @@ module mips #(
     wire [SIZE-1:0] pc_plus_4;
     wire reset_debug;
 
+    always @(posedge i_clk) begin
+        if (i_rst || reset_debug) begin
+            if_to_id_reg <= 0;
+            id_to_ex_reg <= 0;
+            ex_to_mem_reg <= 0;
+            mem_to_wb_reg <= 0;
+        end
+        else begin    
+            if_to_id_reg <= if_to_id;
+            id_to_ex_reg <= id_to_ex;
+            ex_to_mem_reg <= ex_to_mem;
+            mem_to_wb_reg <= mem_to_wb;
+        end
+    end
+
 
     debugger #(
         .SIZE(SIZE),

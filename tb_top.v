@@ -268,27 +268,31 @@ module tb_top;
         ////send_uart_command(8'h09); // Command to set step-by-step mode
         ////wait_for_ready(); // Wait for 'R'
 //
-        //send_uart_command(8'h02); // Command to request IF/ID latch
-        //receive_data_from_uart(8); // Receive 4 bytes of data
+        #1000;
+        send_uart_command(8'h02); // Command to request IF/ID latch
+        receive_data_from_uart(8); // Receive 4 bytes of data
 //
-        //wait_for_ready(); // Wait for 'R'
+        wait_for_ready(); // Wait for 'R'
+        #1000;
+
+        send_uart_command(8'h03); // Command to request ID/EX latch
+        receive_data_from_uart(17); // Receive 17 bytes of data
+        wait_for_ready(); // Wait for 'R'
+        
+        #1000;
+        
+        send_uart_command(8'h04); // Command to request mem ex latch
+        receive_data_from_uart(10); // Receive 17 bytes of data
+        wait_for_ready();
 //
-        //send_uart_command(8'h03); // Command to request ID/EX latch
-        //receive_data_from_uart(17); // Receive 17 bytes of data
-        //wait_for_ready(); // Wait for 'R'
-        //
-        //send_uart_command(8'h04); // Command to request mem ex latch
-        //receive_data_from_uart(10); // Receive 17 bytes of data
-        //wait_for_ready;
-//
-        //send_uart_command(8'h05); // Command to request MEM/WB latch
-        //receive_data_from_uart(9); // Receive 9 bytes of data
-        //wait_for_ready(); // Wait for 'R'
-        //
-        //send_uart_command(8'h01);
-        //receive_data_from_uart(128); // Receive 9 bytes of data
-        //wait_for_ready(); // Wait for 'R'
-//
+        send_uart_command(8'h05); // Command to request MEM/WB latch
+        receive_data_from_uart(9); // Receive 9 bytes of data
+        wait_for_ready(); // Wait for 'R'
+
+        send_uart_command(8'h0B); // Command to request mem position
+        send_uart_command(8'h0);  // Send mem position
+        wait_for_ready(); // Wait for 'R'
+        
         //send_uart_command(8'h0A); // Command to step program
         //send_uart_command(8'h0A); // Command to step program
         //send_uart_command(8'h0A); // Command to step program
@@ -324,7 +328,6 @@ module tb_top;
         //send_uart_command(8'h08); // Command to contiunous
         
         #70000000000;
-
 
         //send_uart_command(8'h02); // Command to request IF/ID latch
         //receive_data_from_uart(8); // Receive 4 bytes of data

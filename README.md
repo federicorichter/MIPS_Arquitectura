@@ -1,4 +1,4 @@
-# TP3 - MIPS
+![image](https://github.com/user-attachments/assets/85435f88-5952-465f-97a0-3b5da38cbe96)# TP3 - MIPS
 
 ## Universidad Nacional de Córdoba
 ![image](https://github.com/user-attachments/assets/16ea052b-a425-4ebf-8b1b-adf87b052919)
@@ -191,7 +191,7 @@ Algunos de los comandos más relevantes:
 
 Puedes ver el diagrama de estados del depurador a continuación:
 
-![Diagrama de Estados del Depurador](scripts/Debugger_State_Diagram.svg)
+![image](https://github.com/user-attachments/assets/56c497ed-9682-42dc-9672-fc8338ee3702)
 
 ## Analisis de timing:
 Se probo la frecuencia maxima a la que se puede ejecutar el sistema sin problemas de timing.
@@ -212,4 +212,4 @@ Concluimos que la frecuencia maxima a la que podemos hacer funcionar la implemen
 
 ## Diagrama de bloques del MIPS
 
-![Diagrama de bloques del MIPS](scripts/Block_diagram.svg)
+![image](https://github.com/user-attachments/assets/ebb25c3f-bbd5-4f15-80dc-36e83e09e6f5)

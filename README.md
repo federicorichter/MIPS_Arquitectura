@@ -198,6 +198,10 @@ Se probo la frecuencia maxima a la que se puede ejecutar el sistema sin problema
 ### 40 Mhz:
 ![image](https://github.com/user-attachments/assets/c6390d10-d1cd-4892-afa9-e4d68e3c101b)
 
+### 50Mhz
+![image](https://github.com/user-attachments/assets/5c0c2c0b-28ea-4b11-a123-535c13f80c9a)
+
+
 ### 
 
 

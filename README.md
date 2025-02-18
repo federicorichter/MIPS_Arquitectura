@@ -213,3 +213,5 @@ Concluimos que la frecuencia maxima a la que podemos hacer funcionar la implemen
 ## Diagrama de bloques del MIPS
 
 ![image](https://github.com/user-attachments/assets/ebb25c3f-bbd5-4f15-80dc-36e83e09e6f5)
+
+Link Google Drive SVG: https://drive.google.com/file/d/12zH1TmU-y-AC7Wxa7y6nwYojT1YrmjtS/view?usp=sharing
